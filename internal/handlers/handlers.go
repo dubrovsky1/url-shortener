@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"github.com/gorilla/mux"
 	"io"
 	"log"
 	"math/rand"
 	"net/http"
+	"strings"
 )
 
 var urls = make(map[string]string)
@@ -22,18 +22,23 @@ func getShortURL() string {
 	return string(s)
 }
 
-func GetHandler(res http.ResponseWriter, req *http.Request) {
-	log.Printf("Request Log. Method: %s, id: %s\n", req.Method, mux.Vars(req)["id"])
+func MainHandler(res http.ResponseWriter, req *http.Request) {
+	log.Printf("Request Log. Method: %s\n", req.Method)
 
-	if req.Method != http.MethodGet {
+	if req.Method == http.MethodPost {
+		postHandler(res, req)
+	} else if req.Method == http.MethodGet {
+		getHandler(res, req)
+	} else {
 		http.Error(res, "Invalid request method", http.StatusBadRequest)
-		return
 	}
+}
 
-	shortURL := mux.Vars(req)["id"]
+func getHandler(res http.ResponseWriter, req *http.Request) {
+	shortURL := strings.TrimLeft(req.URL.Path, "/")
+	log.Printf("Request Log. shortURL: %s\n", shortURL)
 
 	if _, ok := urls[shortURL]; !ok {
-		log.Printf("The short url is missing: %s\n", shortURL)
 		http.Error(res, "The short url is missing", http.StatusBadRequest)
 		return
 	}
@@ -45,14 +50,7 @@ func GetHandler(res http.ResponseWriter, req *http.Request) {
 	log.Printf("Response Log. content-type: %s, Location: %s\n", res.Header().Get("content-type"), res.Header().Get("Location"))
 }
 
-func PostHandler(res http.ResponseWriter, req *http.Request) {
-	log.Printf("Request Log. Method: %s\n", req.Method)
-
-	if req.Method != http.MethodPost {
-		http.Error(res, "Invalid request method", http.StatusBadRequest)
-		return
-	}
-
+func postHandler(res http.ResponseWriter, req *http.Request) {
 	body, err := io.ReadAll(req.Body)
 	log.Printf("Request Log. Body: %s\n", body)
 
