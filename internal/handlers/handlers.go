@@ -33,7 +33,7 @@ func GetHandler(res http.ResponseWriter, req *http.Request) {
 	shortURL := mux.Vars(req)["id"]
 
 	if _, ok := urls[shortURL]; !ok {
-		log.Printf("The short url is missing: %s, id: %s\n", shortURL)
+		log.Printf("The short url is missing: %s\n", shortURL)
 		http.Error(res, "The short url is missing", http.StatusBadRequest)
 		return
 	}
