@@ -11,5 +11,5 @@ func main() {
 	mux.HandleFunc(`/`, handlers.MainHandler)
 
 	log.Println("Server is listening localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	log.Fatal(http.ListenAndServe(`:8080`, mux))
 }
