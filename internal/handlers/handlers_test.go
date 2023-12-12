@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"github.com/dubrovsky1/url-shortener/internal/storage"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	"io"
 	"log"
 	"net/http"
@@ -14,107 +14,157 @@ import (
 	"testing"
 )
 
-func TestMainHandler(t *testing.T) {
-	var shortURL string
-	originalURL := "https://practicum.yandex.ru/"
-	handler := Handler{Urls: *storage.New()}
+type Want struct {
+	expectedCode        int
+	expectedContentType string
+	expectedLocation    string
+	expectedBody        string
+}
 
-	t.Run("positive test post #1", func(t *testing.T) {
-		//формируем запрос
-		request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(originalURL))
-		w := httptest.NewRecorder()
-		h := http.HandlerFunc(handler.MainHandler)
-		h(w, request)
+type RequestParams struct {
+	name   string
+	method string
+	url    string
+	body   string
+	want   Want
+}
 
-		//результат выполнения post хендлера
-		result := w.Result()
-		defer result.Body.Close()
+var shortURL string
+var originalURL = "https://practicum.yandex.ru/"
+var h = Handler{Urls: *storage.New()}
 
-		//читаем и проверяем тело ответа, достаем из него url
-		body, err := io.ReadAll(result.Body)
-		require.NoError(t, err)
+func getRouter() chi.Router {
+	r := chi.NewRouter()
+	r.Post("/", h.SaveURL)
+	r.Get("/{id}", h.GetURL)
+	return r
+}
 
-		resultURL, err := url.Parse(string(body))
-		if err != nil {
-			require.Error(t, err, "Некорректный url")
-		}
+func testRequest(t *testing.T, ts *httptest.Server, method, url string, body string) (*http.Response, string) {
+	req, err := http.NewRequest(method, url, strings.NewReader(body))
+	require.NoError(t, err)
 
-		shortURL = strings.TrimLeft(resultURL.Path, "/")
-		log.Printf("Test post. Body: %s, shortUrl: %s\n", resultURL, shortURL)
+	resp, err := ts.Client().Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
 
-		assert.Equal(t, http.StatusCreated, result.StatusCode, "Код ответа не совпадает с ожидаемым")
-		assert.Equal(t, "text/plain", result.Header.Get("content-type"), "content-type не совпадает с ожидаемым")
-	})
+	respBody, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
 
+	return resp, string(respBody)
+}
+
+func TestSaveURL(t *testing.T) {
 	log.Println("=============================================================>")
 
-	t.Run("positive test get #1", func(t *testing.T) {
-		//формируем запрос
-		request := httptest.NewRequest(http.MethodGet, "/"+shortURL, nil)
-		w := httptest.NewRecorder()
-		h := http.HandlerFunc(handler.MainHandler)
-		h(w, request)
+	//запускаем тестовый сервер
+	r := getRouter()
+	ts := httptest.NewServer(r)
+	defer ts.Close()
 
-		//результат выполнения post хендлера
-		result := w.Result()
-		defer result.Body.Close()
-
-		assert.Equal(t, http.StatusTemporaryRedirect, result.StatusCode, "Код ответа не совпадает с ожидаемым")
-		assert.Equal(t, "text/plain", result.Header.Get("content-type"), "content-type не совпадает с ожидаемым")
-		assert.Equal(t, originalURL, result.Header.Get("Location"), "Location не совпадает с ожидаемым")
-	})
-
-	log.Println("=============================================================>")
-
-	badTests := []struct {
-		name         string
-		method       string
-		target       string
-		body         string
-		expectedCode int
-	}{
+	tests := []RequestParams{
 		{
-			name:         "Not get and post method.",
-			method:       http.MethodPut,
-			target:       "/",
-			body:         originalURL,
-			expectedCode: http.StatusBadRequest,
+			name:   "Post. Save url.",
+			method: http.MethodPost,
+			url:    ts.URL + "/",
+			body:   originalURL,
+			want: Want{
+				expectedCode:        http.StatusCreated,
+				expectedContentType: "text/plain",
+			},
 		},
 		{
-			name:         "Post. No exists body.",
-			method:       http.MethodPost,
-			target:       "/",
-			body:         "",
-			expectedCode: http.StatusBadRequest,
+			name:   "Post. No exists body.",
+			method: http.MethodPost,
+			url:    ts.URL + "/",
+			body:   "",
+			want: Want{
+				expectedCode: http.StatusBadRequest,
+			},
 		},
 		{
-			name:         "Post. Not valid body original url.",
-			method:       http.MethodPost,
-			target:       "/",
-			body:         "sdaff/sde8%%%4325sa@.ru-213",
-			expectedCode: http.StatusBadRequest,
-		},
-		{
-			name:         "Get. Not exists short url.",
-			method:       http.MethodGet,
-			target:       "/aaaaaaaaaa",
-			expectedCode: http.StatusBadRequest,
+			name:   "Post. Not valid body original url.",
+			method: http.MethodPost,
+			url:    ts.URL + "/",
+			body:   "sdaff/sde8%%%4325sa@.ru-213",
+			want: Want{
+				expectedCode: http.StatusBadRequest,
+			},
 		},
 	}
 
-	for _, tt := range badTests {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(tt.method, tt.target, strings.NewReader(tt.body))
-			w := httptest.NewRecorder()
-			h := http.HandlerFunc(handler.MainHandler)
-			h(w, request)
+			resp, respBody := testRequest(t, ts, tt.method, tt.url, tt.body)
 
-			result := w.Result()
-			defer result.Body.Close()
+			assert.Equal(t, tt.want.expectedCode, resp.StatusCode, "Код ответа не совпадает с ожидаемым")
 
-			assert.Equal(t, tt.expectedCode, result.StatusCode, "Код ответа не совпадает с ожидаемым")
+			if tt.want.expectedCode != http.StatusBadRequest {
+				u, errParseBody := url.Parse(string(respBody))
+				require.NoError(t, errParseBody)
+
+				shortURL = strings.TrimLeft(u.Path, "/")
+				log.Printf("Test Log. RespBody: %s, URL: %s, ShortURL: %s\n", string(respBody), ts.URL, shortURL)
+
+				assert.Equal(t, tt.want.expectedContentType, resp.Header.Get("content-type"), "content-type не совпадает с ожидаемым")
+				assert.Equal(t, ts.URL+"/"+shortURL, string(respBody), "Body не совпадает с ожидаемым")
+			}
+
 			log.Println("=============================================================>")
 		})
 	}
 
+}
+
+func TestGetURL(t *testing.T) {
+	log.Println("=============================================================>")
+
+	//запускаем тестовый сервер
+	r := getRouter()
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	tests := []RequestParams{
+		{
+			name:   "Get. Get url.",
+			method: http.MethodGet,
+			url:    ts.URL + "/" + shortURL,
+			body:   "",
+			want: Want{
+				expectedCode:        http.StatusTemporaryRedirect,
+				expectedContentType: "text/plain",
+				expectedLocation:    originalURL,
+			},
+		},
+		{
+			name:   "Get. Not exists short url.",
+			method: http.MethodGet,
+			url:    ts.URL + "/aaaaaaaaaa",
+			body:   "",
+			want: Want{
+				expectedCode: http.StatusBadRequest,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			log.Printf("Test Log. URL: %s\n", tt.url)
+
+			//отправляем запросы
+			resp, _ := testRequest(t, ts, tt.method, tt.url, tt.body)
+
+			assert.Equal(t, tt.want.expectedCode, resp.StatusCode, "Код ответа не совпадает с ожидаемым")
+
+			if tt.want.expectedCode != http.StatusBadRequest {
+				log.Printf("RespLocation: %s\n", resp.Header.Get("Location"))
+
+				assert.Equal(t, tt.want.expectedContentType, resp.Header.Get("content-type"), "content-type не совпадает с ожидаемым")
+				assert.Equal(t, originalURL, resp.Header.Get("Location"), "Location не совпадает с ожидаемым")
+			}
+
+			log.Println("=============================================================>")
+		})
+	}
 }

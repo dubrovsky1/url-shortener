@@ -2,32 +2,39 @@ package handlers
 
 import (
 	"github.com/dubrovsky1/url-shortener/internal/storage"
+	"github.com/go-chi/chi/v5"
 
 	"io"
 	"log"
 	"net/http"
 	"net/url"
-	"strings"
 )
 
 type Handler struct {
 	Urls storage.Storage
 }
 
-func (h Handler) MainHandler(res http.ResponseWriter, req *http.Request) {
-	log.Printf("Request Log. Method: %s\n", req.Method)
+//func (h Handler) MainHandler(res http.ResponseWriter, req *http.Request) {
+//	log.Printf("Request Log. Method: %s\n", req.Method)
+//
+//	if req.Method == http.MethodPost {
+//		h.postHandler(res, req)
+//	} else if req.Method == http.MethodGet {
+//		h.getHandler(res, req)
+//	} else {
+//		http.Error(res, "Invalid request method", http.StatusBadRequest)
+//	}
+//}
 
-	if req.Method == http.MethodPost {
-		h.postHandler(res, req)
-	} else if req.Method == http.MethodGet {
-		h.getHandler(res, req)
-	} else {
+func (h Handler) GetURL(res http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodGet {
 		http.Error(res, "Invalid request method", http.StatusBadRequest)
+		return
 	}
-}
 
-func (h Handler) getHandler(res http.ResponseWriter, req *http.Request) {
-	shortURL := strings.TrimLeft(req.URL.Path, "/")
+	//shortURL := strings.TrimLeft(req.URL.Path, "/")
+
+	shortURL := chi.URLParam(req, "id")
 	log.Printf("Request Log. shortURL: %s\n", shortURL)
 
 	originalURL, err := h.Urls.Get(shortURL)
@@ -43,7 +50,12 @@ func (h Handler) getHandler(res http.ResponseWriter, req *http.Request) {
 	log.Printf("Response Log. content-type: %s, Location: %s\n", res.Header().Get("content-type"), res.Header().Get("Location"))
 }
 
-func (h Handler) postHandler(res http.ResponseWriter, req *http.Request) {
+func (h Handler) SaveURL(res http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		http.Error(res, "Invalid request method", http.StatusBadRequest)
+		return
+	}
+
 	body, err := io.ReadAll(req.Body)
 	log.Printf("Request Log. Body: %s\n", body)
 
