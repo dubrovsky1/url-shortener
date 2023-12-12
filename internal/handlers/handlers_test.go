@@ -46,6 +46,8 @@ func TestMainHandler(t *testing.T) {
 		assert.Equal(t, "text/plain", result.Header.Get("content-type"), "content-type не совпадает с ожидаемым")
 	})
 
+	log.Println("=============================================================>")
+
 	t.Run("positive test get #1", func(t *testing.T) {
 		//формируем запрос
 		request := httptest.NewRequest(http.MethodGet, "/"+shortURL, nil)
@@ -61,5 +63,58 @@ func TestMainHandler(t *testing.T) {
 		assert.Equal(t, "text/plain", result.Header.Get("content-type"), "content-type не совпадает с ожидаемым")
 		assert.Equal(t, originalURL, result.Header.Get("Location"), "Location не совпадает с ожидаемым")
 	})
+
+	log.Println("=============================================================>")
+
+	bad_tests := []struct {
+		name         string
+		method       string
+		target       string
+		body         string
+		expectedCode int
+	}{
+		{
+			name:         "Not get and post method.",
+			method:       http.MethodPut,
+			target:       "/",
+			body:         originalURL,
+			expectedCode: http.StatusBadRequest,
+		},
+		{
+			name:         "Post. No exists body.",
+			method:       http.MethodPost,
+			target:       "/",
+			body:         "",
+			expectedCode: http.StatusBadRequest,
+		},
+		{
+			name:         "Post. Not valid body original url.",
+			method:       http.MethodPost,
+			target:       "/",
+			body:         "sdaff/sde8%%%4325sa@.ru-213",
+			expectedCode: http.StatusBadRequest,
+		},
+		{
+			name:         "Get. Not exists short url.",
+			method:       http.MethodGet,
+			target:       "/aaaaaaaaaa",
+			expectedCode: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range bad_tests {
+		t.Run(tt.name, func(t *testing.T) {
+			request := httptest.NewRequest(tt.method, tt.target, strings.NewReader(tt.body))
+			w := httptest.NewRecorder()
+			h := http.HandlerFunc(handler.MainHandler)
+			h(w, request)
+
+			result := w.Result()
+			defer result.Body.Close()
+
+			assert.Equal(t, tt.expectedCode, result.StatusCode, "Код ответа не совпадает с ожидаемым")
+			log.Println("=============================================================>")
+		})
+	}
 
 }

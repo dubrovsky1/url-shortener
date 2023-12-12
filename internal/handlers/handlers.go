@@ -47,11 +47,17 @@ func (h Handler) postHandler(res http.ResponseWriter, req *http.Request) {
 	body, err := io.ReadAll(req.Body)
 	log.Printf("Request Log. Body: %s\n", body)
 
-	if err != nil {
+	//проверяем корректность url из тела запроса
+	if string(body) == "" || err != nil {
 		http.Error(res, "The request body is missing", http.StatusBadRequest)
 		return
 	}
+	if _, errParseUrl := url.Parse(string(body)); errParseUrl != nil {
+		http.Error(res, "Not valid result URL", http.StatusBadRequest)
+		return
+	}
 
+	//сохраняем в базу
 	shortURL, errSave := h.Urls.Save(string(body))
 	if errSave != nil {
 		http.Error(res, "Save shortURL error", http.StatusBadRequest)
