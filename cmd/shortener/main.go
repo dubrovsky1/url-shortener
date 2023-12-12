@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	h := handlers.Handler{*storage.New()}
+	h := handlers.Handler{Urls: *storage.New()}
 	mux := http.NewServeMux()
 	mux.HandleFunc(`/`, h.MainHandler)
 
