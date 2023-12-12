@@ -1,57 +1,49 @@
 package handlers
 
 import (
+	"github.com/dubrovsky1/url-shortener/internal/storage"
+
 	"io"
 	"log"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"strings"
 )
 
-var urls = make(map[string]string)
-
-const (
-	alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-)
-
-func getShortURL() string {
-	s := make([]byte, 6)
-	for i := range s {
-		s[i] = alphabet[rand.Intn(len(alphabet))]
-	}
-	return string(s)
+type Handler struct {
+	Urls storage.Storage
 }
 
-func MainHandler(res http.ResponseWriter, req *http.Request) {
+func (h Handler) MainHandler(res http.ResponseWriter, req *http.Request) {
 	log.Printf("Request Log. Method: %s\n", req.Method)
 
 	if req.Method == http.MethodPost {
-		postHandler(res, req)
+		h.postHandler(res, req)
 	} else if req.Method == http.MethodGet {
-		getHandler(res, req)
+		h.getHandler(res, req)
 	} else {
 		http.Error(res, "Invalid request method", http.StatusBadRequest)
 	}
 }
 
-func getHandler(res http.ResponseWriter, req *http.Request) {
+func (h Handler) getHandler(res http.ResponseWriter, req *http.Request) {
 	shortURL := strings.TrimLeft(req.URL.Path, "/")
 	log.Printf("Request Log. shortURL: %s\n", shortURL)
 
-	if _, ok := urls[shortURL]; !ok {
-		http.Error(res, "The short url is missing", http.StatusBadRequest)
+	originalURL, err := h.Urls.Get(shortURL)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	res.Header().Set("content-type", "text/plain")
-	res.Header().Set("Location", urls[shortURL])
+	res.Header().Set("Location", originalURL)
 	res.WriteHeader(http.StatusTemporaryRedirect)
 
 	log.Printf("Response Log. content-type: %s, Location: %s\n", res.Header().Get("content-type"), res.Header().Get("Location"))
 }
 
-func postHandler(res http.ResponseWriter, req *http.Request) {
+func (h Handler) postHandler(res http.ResponseWriter, req *http.Request) {
 	body, err := io.ReadAll(req.Body)
 	log.Printf("Request Log. Body: %s\n", body)
 
@@ -60,13 +52,11 @@ func postHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	//нужно ли проверять ссылку из тела на корректность или там может быть любой текст?
-
-	//гененрируем короткую ссылку
-	shortURL := getShortURL()
-
-	//запоминаем url, соответствующий короткой ссылке
-	urls[shortURL] = string(body)
+	shortURL, errSave := h.Urls.Save(string(body))
+	if errSave != nil {
+		http.Error(res, "Save shortURL error", http.StatusBadRequest)
+		return
+	}
 
 	//формируем тело ответа и проверяем на валидность
 	responseBody := "http://" + req.Host + "/" + shortURL

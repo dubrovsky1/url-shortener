@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"github.com/dubrovsky1/url-shortener/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"io"
 	"log"
 	"net/http"
@@ -15,12 +17,13 @@ import (
 func TestMainHandler(t *testing.T) {
 	var shortURL string
 	originalURL := "https://practicum.yandex.ru/"
+	handler := Handler{*storage.New()}
 
 	t.Run("positive test post #1", func(t *testing.T) {
 		//формируем запрос
 		request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(originalURL))
 		w := httptest.NewRecorder()
-		h := http.HandlerFunc(MainHandler)
+		h := http.HandlerFunc(handler.MainHandler)
 		h(w, request)
 
 		//результат выполнения post хендлера
@@ -47,7 +50,7 @@ func TestMainHandler(t *testing.T) {
 		//формируем запрос
 		request := httptest.NewRequest(http.MethodGet, "/"+shortURL, nil)
 		w := httptest.NewRecorder()
-		h := http.HandlerFunc(MainHandler)
+		h := http.HandlerFunc(handler.MainHandler)
 		h(w, request)
 
 		//результат выполнения post хендлера
