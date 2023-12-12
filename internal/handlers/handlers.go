@@ -52,7 +52,7 @@ func (h Handler) postHandler(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "The request body is missing", http.StatusBadRequest)
 		return
 	}
-	if _, errParseUrl := url.Parse(string(body)); errParseUrl != nil {
+	if _, errParseURL := url.Parse(string(body)); errParseURL != nil {
 		http.Error(res, "Not valid result URL", http.StatusBadRequest)
 		return
 	}
