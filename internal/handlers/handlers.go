@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -59,12 +60,25 @@ func postHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	//нужно ли проверять ссылку из тела на корректность или там может быть любой текст?
+
+	//гененрируем короткую ссылку
 	shortURL := getShortURL()
+
+	//запоминаем url, соответствующий короткой ссылке
 	urls[shortURL] = string(body)
+
+	//формируем тело ответа и проверяем на валидность
+	responseBody := "http://" + req.Host + "/" + shortURL
+
+	if _, e := url.Parse(responseBody); e != nil {
+		http.Error(res, "Not valid result URL", http.StatusBadRequest)
+		return
+	}
 
 	res.Header().Set("content-type", "text/plain")
 	res.WriteHeader(http.StatusCreated)
-	io.WriteString(res, req.Host+"/"+shortURL)
+	io.WriteString(res, responseBody)
 
 	log.Printf("Response Log. content-type: %s, shortURL: %s\n", res.Header().Get("content-type"), shortURL)
 }
