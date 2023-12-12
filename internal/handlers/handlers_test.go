@@ -66,7 +66,7 @@ func TestMainHandler(t *testing.T) {
 
 	log.Println("=============================================================>")
 
-	bad_tests := []struct {
+	badTests := []struct {
 		name         string
 		method       string
 		target       string
@@ -102,7 +102,7 @@ func TestMainHandler(t *testing.T) {
 		},
 	}
 
-	for _, tt := range bad_tests {
+	for _, tt := range badTests {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(tt.method, tt.target, strings.NewReader(tt.body))
 			w := httptest.NewRecorder()
