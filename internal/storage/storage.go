@@ -27,7 +27,7 @@ func (s Storage) Save(originalURL string) (string, error) {
 func (s Storage) Get(shortURL string) (string, error) {
 
 	if _, ok := s.urls[shortURL]; !ok {
-		return "", errors.New("The short url is missing")
+		return "", errors.New("the short url is missing")
 	}
 	return s.urls[shortURL], nil
 }
