@@ -25,11 +25,10 @@ func TestMainHandler(t *testing.T) {
 
 		//результат выполнения post хендлера
 		result := w.Result()
+		defer result.Body.Close()
 
 		//читаем и проверяем тело ответа, достаем из него url
 		body, err := io.ReadAll(result.Body)
-		require.NoError(t, err)
-		err = result.Body.Close()
 		require.NoError(t, err)
 
 		resultURL, err := url.Parse(string(body))
@@ -53,6 +52,7 @@ func TestMainHandler(t *testing.T) {
 
 		//результат выполнения post хендлера
 		result := w.Result()
+		defer result.Body.Close()
 
 		assert.Equal(t, http.StatusTemporaryRedirect, result.StatusCode, "Код ответа не совпадает с ожидаемым")
 		assert.Equal(t, "text/plain", result.Header.Get("content-type"), "content-type не совпадает с ожидаемым")
