@@ -14,7 +14,7 @@ func New() *Storage {
 	return &Storage{make(map[string]string)}
 }
 
-func (s Storage) Save(originalURL string) (string, error) {
+func (s *Storage) Save(originalURL string) (string, error) {
 	//гененрируем короткую ссылку
 	shortURL := generator.GetShortURL()
 
@@ -24,7 +24,7 @@ func (s Storage) Save(originalURL string) (string, error) {
 	return shortURL, nil
 }
 
-func (s Storage) Get(shortURL string) (string, error) {
+func (s *Storage) Get(shortURL string) (string, error) {
 
 	if _, ok := s.urls[shortURL]; !ok {
 		return "", errors.New("the short url is missing")

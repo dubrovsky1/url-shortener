@@ -11,20 +11,16 @@ import (
 )
 
 type Handler struct {
-	Urls storage.Storage
+	Urls           storage.Storage
+	ResultShortURL string
 }
 
-//func (h Handler) MainHandler(res http.ResponseWriter, req *http.Request) {
-//	log.Printf("Request Log. Method: %s\n", req.Method)
-//
-//	if req.Method == http.MethodPost {
-//		h.postHandler(res, req)
-//	} else if req.Method == http.MethodGet {
-//		h.getHandler(res, req)
-//	} else {
-//		http.Error(res, "Invalid request method", http.StatusBadRequest)
-//	}
-//}
+func New(s string) *Handler {
+	return &Handler{
+		Urls:           *storage.New(),
+		ResultShortURL: s,
+	}
+}
 
 func (h Handler) GetURL(res http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodGet {
@@ -33,7 +29,6 @@ func (h Handler) GetURL(res http.ResponseWriter, req *http.Request) {
 	}
 
 	//shortURL := strings.TrimLeft(req.URL.Path, "/")
-
 	shortURL := chi.URLParam(req, "id")
 	log.Printf("Request Log. shortURL: %s\n", shortURL)
 
@@ -77,7 +72,12 @@ func (h Handler) SaveURL(res http.ResponseWriter, req *http.Request) {
 	}
 
 	//формируем тело ответа и проверяем на валидность
-	responseBody := "http://" + req.Host + "/" + shortURL
+	var responseBody string
+	if h.ResultShortURL == req.Host {
+		responseBody = h.ResultShortURL + shortURL
+	} else {
+		responseBody = "http://" + req.Host + "/" + shortURL
+	}
 
 	if _, e := url.Parse(responseBody); e != nil {
 		http.Error(res, "Not valid result URL", http.StatusBadRequest)

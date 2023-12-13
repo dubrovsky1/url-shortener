@@ -32,6 +32,7 @@ type RequestParams struct {
 
 var shortURL string
 var originalURL = "https://practicum.yandex.ru/"
+
 var h = Handler{Urls: *storage.New()}
 
 func getRouter() chi.Router {
