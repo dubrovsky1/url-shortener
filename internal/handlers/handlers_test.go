@@ -44,7 +44,14 @@ func testRequest(t *testing.T, ts *httptest.Server, method, url string, body str
 	req, err := http.NewRequest(method, url, strings.NewReader(body))
 	require.NoError(t, err)
 
+	//запрет редиректа
+	client := ts.Client()
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
 	resp, err := ts.Client().Do(req)
+
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
@@ -149,7 +156,6 @@ func TestGetURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			log.Printf("Test Log. URL: %s\n", tt.url)
 
 			//отправляем запросы
@@ -158,8 +164,6 @@ func TestGetURL(t *testing.T) {
 			assert.Equal(t, tt.want.expectedCode, resp.StatusCode, "Код ответа не совпадает с ожидаемым")
 
 			if tt.want.expectedCode != http.StatusBadRequest {
-				log.Printf("RespLocation: %s\n", resp.Header.Get("Location"))
-
 				assert.Equal(t, tt.want.expectedContentType, resp.Header.Get("content-type"), "content-type не совпадает с ожидаемым")
 				assert.Equal(t, originalURL, resp.Header.Get("Location"), "Location не совпадает с ожидаемым")
 			}
