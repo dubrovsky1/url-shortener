@@ -5,6 +5,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"io"
 	"log"
 	"net/http"
@@ -62,9 +63,6 @@ func testRequest(t *testing.T, ts *httptest.Server, method, url string, body str
 }
 
 func TestSaveURL(t *testing.T) {
-	log.Println("=============================================================>")
-
-	//запускаем тестовый сервер
 	r := getRouter()
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -103,18 +101,19 @@ func TestSaveURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resp, respBody := testRequest(t, ts, tt.method, tt.url, tt.body)
+			defer resp.Body.Close()
 
 			assert.Equal(t, tt.want.expectedCode, resp.StatusCode, "Код ответа не совпадает с ожидаемым")
 
 			if tt.want.expectedCode != http.StatusBadRequest {
-				u, errParseBody := url.Parse(string(respBody))
+				u, errParseBody := url.Parse(respBody)
 				require.NoError(t, errParseBody)
 
 				shortURL = strings.TrimLeft(u.Path, "/")
-				log.Printf("Test Log. RespBody: %s, URL: %s, ShortURL: %s\n", string(respBody), ts.URL, shortURL)
+				log.Printf("Test Log. RespBody: %s, URL: %s, ShortURL: %s\n", respBody, ts.URL, shortURL)
 
 				assert.Equal(t, tt.want.expectedContentType, resp.Header.Get("content-type"), "content-type не совпадает с ожидаемым")
-				assert.Equal(t, ts.URL+"/"+shortURL, string(respBody), "Body не совпадает с ожидаемым")
+				assert.Equal(t, ts.URL+"/"+shortURL, respBody, "Body не совпадает с ожидаемым")
 			}
 
 			log.Println("=============================================================>")
@@ -124,9 +123,6 @@ func TestSaveURL(t *testing.T) {
 }
 
 func TestGetURL(t *testing.T) {
-	log.Println("=============================================================>")
-
-	//запускаем тестовый сервер
 	r := getRouter()
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -160,6 +156,7 @@ func TestGetURL(t *testing.T) {
 
 			//отправляем запросы
 			resp, _ := testRequest(t, ts, tt.method, tt.url, tt.body)
+			defer resp.Body.Close()
 
 			assert.Equal(t, tt.want.expectedCode, resp.StatusCode, "Код ответа не совпадает с ожидаемым")
 
