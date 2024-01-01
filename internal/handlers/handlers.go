@@ -15,20 +15,14 @@ type Handler struct {
 	ResultShortURL string
 }
 
-func New(s string) *Handler {
+func New(s string, db *storage.Storage) *Handler {
 	return &Handler{
-		Urls:           *storage.New(),
+		Urls:           *db,
 		ResultShortURL: s,
 	}
 }
 
 func (h Handler) GetURL(res http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodGet {
-		http.Error(res, "Invalid request method", http.StatusBadRequest)
-		return
-	}
-
-	//shortURL := strings.TrimLeft(req.URL.Path, "/")
 	shortURL := chi.URLParam(req, "id")
 	log.Printf("Request Log. shortURL: %s\n", shortURL)
 
@@ -46,16 +40,11 @@ func (h Handler) GetURL(res http.ResponseWriter, req *http.Request) {
 }
 
 func (h Handler) SaveURL(res http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodPost {
-		http.Error(res, "Invalid request method", http.StatusBadRequest)
-		return
-	}
-
 	body, err := io.ReadAll(req.Body)
 	log.Printf("Request Log. Body: %s\n", body)
 
 	//проверяем корректность url из тела запроса
-	if string(body) == "" || err != nil {
+	if err != nil || len(body) == 0 {
 		http.Error(res, "The request body is missing", http.StatusBadRequest)
 		return
 	}

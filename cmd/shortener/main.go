@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/dubrovsky1/url-shortener/internal/config"
 	"github.com/dubrovsky1/url-shortener/internal/handlers"
+	"github.com/dubrovsky1/url-shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"log"
 	"net/http"
@@ -12,7 +13,7 @@ func main() {
 	//парсим переменные окружения и флаги из конфигуратора
 	flags := config.ParseFlags()
 	//хендлер с доступом к хранилищу
-	h := handlers.New(flags.ResultShortURL)
+	h := handlers.New(flags.ResultShortURL, storage.New())
 
 	r := chi.NewRouter()
 	r.Post("/", h.SaveURL)

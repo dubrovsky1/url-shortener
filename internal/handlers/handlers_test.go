@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -111,13 +110,13 @@ func TestSaveURL(t *testing.T) {
 				require.NoError(t, errParseBody)
 
 				shortURL = strings.TrimLeft(u.Path, "/")
-				log.Printf("Test Log. RespBody: %s, URL: %s, ShortURL: %s\n", respBody, ts.URL, shortURL)
+				t.Logf("Test Log. RespBody: %s, URL: %s, ShortURL: %s\n", respBody, ts.URL, shortURL)
 
 				assert.Equal(t, tt.want.expectedContentType, resp.Header.Get("content-type"), "content-type не совпадает с ожидаемым")
 				assert.Equal(t, ts.URL+"/"+shortURL, respBody, "Body не совпадает с ожидаемым")
 			}
 
-			log.Println("=============================================================>")
+			t.Log("=============================================================>")
 		})
 	}
 
@@ -153,7 +152,7 @@ func TestGetURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			log.Printf("Test Log. URL: %s\n", tt.url)
+			t.Logf("Test Log. URL: %s\n", tt.url)
 
 			//отправляем запросы
 			resp, _ := testRequest(t, ts, tt.method, tt.url, tt.body)
@@ -166,7 +165,7 @@ func TestGetURL(t *testing.T) {
 				assert.Equal(t, originalURL, resp.Header.Get("Location"), "Location не совпадает с ожидаемым")
 			}
 
-			log.Println("=============================================================>")
+			t.Log("=============================================================>")
 		})
 	}
 }
