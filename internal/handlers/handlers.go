@@ -1,11 +1,11 @@
 package handlers
 
 import (
+	"github.com/dubrovsky1/url-shortener/internal/logger"
 	"github.com/dubrovsky1/url-shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
 
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 )
@@ -15,22 +15,16 @@ type Handler struct {
 	ResultShortURL string
 }
 
-func New(s string) *Handler {
+func New(s string, db *storage.Storage) *Handler {
 	return &Handler{
-		Urls:           *storage.New(),
+		Urls:           *db,
 		ResultShortURL: s,
 	}
 }
 
 func (h Handler) GetURL(res http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodGet {
-		http.Error(res, "Invalid request method", http.StatusBadRequest)
-		return
-	}
-
-	//shortURL := strings.TrimLeft(req.URL.Path, "/")
 	shortURL := chi.URLParam(req, "id")
-	log.Printf("Request Log. shortURL: %s\n", shortURL)
+	logger.Sugar.Infow("Request Log.", "shortURL", shortURL)
 
 	originalURL, err := h.Urls.Get(shortURL)
 	if err != nil {
@@ -42,20 +36,19 @@ func (h Handler) GetURL(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Location", originalURL)
 	res.WriteHeader(http.StatusTemporaryRedirect)
 
-	log.Printf("Response Log. content-type: %s, Location: %s\n", res.Header().Get("content-type"), res.Header().Get("Location"))
+	logger.Sugar.Infow(
+		"Request Log.",
+		"content-type", res.Header().Get("content-type"),
+		"Location", res.Header().Get("Location"),
+	)
 }
 
 func (h Handler) SaveURL(res http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodPost {
-		http.Error(res, "Invalid request method", http.StatusBadRequest)
-		return
-	}
-
 	body, err := io.ReadAll(req.Body)
-	log.Printf("Request Log. Body: %s\n", body)
+	logger.Sugar.Infow("Response Log.", "Body", string(body))
 
 	//проверяем корректность url из тела запроса
-	if string(body) == "" || err != nil {
+	if err != nil || len(body) == 0 {
 		http.Error(res, "The request body is missing", http.StatusBadRequest)
 		return
 	}
@@ -88,5 +81,9 @@ func (h Handler) SaveURL(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusCreated)
 	io.WriteString(res, responseBody)
 
-	log.Printf("Response Log. content-type: %s, shortURL: %s\n", res.Header().Get("content-type"), shortURL)
+	logger.Sugar.Infow(
+		"Response Log.",
+		"content-type", res.Header().Get("content-type"),
+		"shortURL", shortURL,
+	)
 }
