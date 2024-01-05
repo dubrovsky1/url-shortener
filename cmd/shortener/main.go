@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/dubrovsky1/url-shortener/internal/config"
 	"github.com/dubrovsky1/url-shortener/internal/handlers"
+	"github.com/dubrovsky1/url-shortener/internal/logger"
 	"github.com/dubrovsky1/url-shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"log"
@@ -15,11 +16,14 @@ func main() {
 	//хендлер с доступом к хранилищу
 	h := handlers.New(flags.ResultShortURL, storage.New())
 
-	r := chi.NewRouter()
-	r.Post("/", h.SaveURL)
-	r.Get("/{id}", h.GetURL)
+	logger.Initialize()
 
-	log.Printf("Flags: -a %s, -b %s\n", flags.Host, flags.ResultShortURL)
-	log.Printf("Server is listening %s\n", flags.Host)
+	r := chi.NewRouter()
+	r.Post("/", logger.WithLogging(h.SaveURL))
+	r.Get("/{id}", logger.WithLogging(h.GetURL))
+
+	logger.Sugar.Infow("Flags:", "-a", flags.Host, "-b", flags.ResultShortURL)
+	logger.Sugar.Infow("Server is listening", "host", flags.Host)
+
 	log.Fatal(http.ListenAndServe(flags.Host, r))
 }

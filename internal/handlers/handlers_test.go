@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"github.com/dubrovsky1/url-shortener/internal/logger"
 	"github.com/dubrovsky1/url-shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
@@ -35,6 +36,7 @@ var originalURL = "https://practicum.yandex.ru/"
 var h = Handler{Urls: *storage.New()}
 
 func getRouter() chi.Router {
+	logger.Initialize()
 	r := chi.NewRouter()
 	r.Post("/", h.SaveURL)
 	r.Get("/{id}", h.GetURL)
