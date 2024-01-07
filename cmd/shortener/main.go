@@ -20,6 +20,7 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Post("/", logger.WithLogging(h.SaveURL))
+	r.Post("/api/shorten", logger.WithLogging(h.Shorten))
 	r.Get("/{id}", logger.WithLogging(h.GetURL))
 
 	logger.Sugar.Infow("Flags:", "-a", flags.Host, "-b", flags.ResultShortURL)
