@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
-	"github.com/dubrovsky1/url-shortener/internal/storage"
+	"github.com/dubrovsky1/url-shortener/internal/storage/file"
 	"github.com/go-chi/chi/v5"
 
 	"io"
@@ -13,13 +13,13 @@ import (
 )
 
 type Handler struct {
-	Urls           storage.Storage
+	Urls           *file.Storage
 	ResultShortURL string
 }
 
-func New(s string, db *storage.Storage) *Handler {
+func New(s string, db *file.Storage) *Handler {
 	return &Handler{
-		Urls:           *db,
+		Urls:           db,
 		ResultShortURL: s,
 	}
 }
