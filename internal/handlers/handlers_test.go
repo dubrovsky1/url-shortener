@@ -5,11 +5,10 @@ import (
 	"encoding/json"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
-	"github.com/dubrovsky1/url-shortener/internal/storage"
+	"github.com/dubrovsky1/url-shortener/internal/storage/file"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -36,10 +35,16 @@ type RequestParams struct {
 var shortURL string
 var originalURL = "https://practicum.yandex.ru/"
 
-var h = Handler{Urls: *storage.New()}
-
 func getRouter() chi.Router {
 	logger.Initialize()
+
+	storage, err := file.New("/tmp/short-url-db.json")
+	if err != nil {
+		panic(err)
+	}
+
+	var h = Handler{Urls: storage}
+
 	r := chi.NewRouter()
 	r.Post("/", h.SaveURL)
 	r.Post("/api/shorten", logger.WithLogging(h.Shorten))

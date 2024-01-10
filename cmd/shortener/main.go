@@ -20,7 +20,7 @@ func main() {
 
 	storage, err := file.New(flags.FileStoragePath)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Storage init error", err)
 	}
 
 	//хендлер с доступом к хранилищу

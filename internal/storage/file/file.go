@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/dubrovsky1/url-shortener/internal/generator"
-	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"log"
 	"os"
+	"path/filepath"
 )
 
 type ShortenURL struct {
@@ -27,10 +27,29 @@ func New(filename string) (*Storage, error) {
 	s.Filename = filename
 	s.maxUUID = 0
 
-	//создаем новый или присваиваем существующий файл хранилищу
-	file, err := os.OpenFile(s.Filename, os.O_RDWR|os.O_CREATE, 0666)
+	dir := filepath.Dir(filename)
+
+	var file *os.File
+
+	//создаем папку, если ее нет
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err = os.Mkdir(dir, 0666)
+		if err != nil {
+			log.Fatal("Create dir error ", err)
+		}
+	}
+
+	//создаем файл, если его нет
+	if _, err := os.Stat(s.Filename); os.IsNotExist(err) {
+		file, err = os.Create(s.Filename)
+		if err != nil {
+			log.Fatal("Create file error ", err)
+		}
+	}
+
+	file, err := os.Open(s.Filename)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Open file error ", err)
 	}
 	defer file.Close()
 
@@ -45,7 +64,7 @@ func New(filename string) (*Storage, error) {
 		err = json.Unmarshal(data, &currentShortenURL)
 
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("Unmarshal currentShortenURL error ", err)
 		}
 		s.Urls = append(s.Urls, currentShortenURL)
 
@@ -59,10 +78,6 @@ func (s *Storage) Save(originalURL string) (string, error) {
 	//гененрируем короткую ссылку
 	shortURL := generator.GetShortURL()
 
-	for _, r := range s.Urls {
-		logger.Sugar.Infoln("Storage", "Urls", r)
-	}
-
 	//создаем объект с сокращенной ссылкой, добавляем в хранилище и записываем в конец файла
 	su := ShortenURL{
 		UUID:        s.maxUUID + 1,
@@ -75,13 +90,13 @@ func (s *Storage) Save(originalURL string) (string, error) {
 
 	data, err := json.Marshal(&su)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Marshal su error ", err)
 	}
 
 	//открываем файл, чтобы начать с ним работать
 	file, err := os.OpenFile(s.Filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Open file error ", err)
 	}
 	defer file.Close()
 
@@ -90,12 +105,12 @@ func (s *Storage) Save(originalURL string) (string, error) {
 
 	// записываем событие в буфер
 	if _, err = writer.Write(data); err != nil {
-		log.Fatal(err)
+		log.Fatal("Write file error ", err)
 	}
 
 	// добавляем перенос строки
 	if err = writer.WriteByte('\n'); err != nil {
-		log.Fatal(err)
+		log.Fatal("Write \\n error ", err)
 	}
 
 	// записываем буфер в файл
