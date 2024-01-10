@@ -29,8 +29,6 @@ func New(filename string) (*Storage, error) {
 
 	dir := filepath.Dir(filename)
 
-	var file *os.File
-
 	//создаем папку, если ее нет
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err = os.Mkdir(dir, 0666)
@@ -41,10 +39,11 @@ func New(filename string) (*Storage, error) {
 
 	//создаем файл, если его нет
 	if _, err := os.Stat(s.Filename); os.IsNotExist(err) {
-		file, err = os.Create(s.Filename)
-		if err != nil {
-			log.Fatal("Create file error ", err)
+		newFile, errCreate := os.Create(s.Filename)
+		if errCreate != nil {
+			log.Fatal("Create file error ", errCreate)
 		}
+		newFile.Close()
 	}
 
 	file, err := os.Open(s.Filename)
