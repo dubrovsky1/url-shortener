@@ -1,36 +1,32 @@
 package handlers
 
 import (
-	"github.com/dubrovsky1/url-shortener/internal/storage"
+	"encoding/json"
+	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
+	"github.com/dubrovsky1/url-shortener/internal/models"
+	"github.com/dubrovsky1/url-shortener/internal/storage/file"
 	"github.com/go-chi/chi/v5"
 
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 )
 
 type Handler struct {
-	Urls           storage.Storage
+	Urls           *file.Storage
 	ResultShortURL string
 }
 
-func New(s string) *Handler {
+func New(s string, db *file.Storage) *Handler {
 	return &Handler{
-		Urls:           *storage.New(),
+		Urls:           db,
 		ResultShortURL: s,
 	}
 }
 
 func (h Handler) GetURL(res http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodGet {
-		http.Error(res, "Invalid request method", http.StatusBadRequest)
-		return
-	}
-
-	//shortURL := strings.TrimLeft(req.URL.Path, "/")
 	shortURL := chi.URLParam(req, "id")
-	log.Printf("Request Log. shortURL: %s\n", shortURL)
+	logger.Sugar.Infow("Request Log.", "shortURL", shortURL)
 
 	originalURL, err := h.Urls.Get(shortURL)
 	if err != nil {
@@ -42,20 +38,19 @@ func (h Handler) GetURL(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Location", originalURL)
 	res.WriteHeader(http.StatusTemporaryRedirect)
 
-	log.Printf("Response Log. content-type: %s, Location: %s\n", res.Header().Get("content-type"), res.Header().Get("Location"))
+	logger.Sugar.Infow(
+		"Request Log.",
+		"content-type", res.Header().Get("content-type"),
+		"Location", res.Header().Get("Location"),
+	)
 }
 
 func (h Handler) SaveURL(res http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodPost {
-		http.Error(res, "Invalid request method", http.StatusBadRequest)
-		return
-	}
-
 	body, err := io.ReadAll(req.Body)
-	log.Printf("Request Log. Body: %s\n", body)
+	logger.Sugar.Infow("Response Log.", "Body", string(body))
 
 	//проверяем корректность url из тела запроса
-	if string(body) == "" || err != nil {
+	if err != nil || len(body) == 0 {
 		http.Error(res, "The request body is missing", http.StatusBadRequest)
 		return
 	}
@@ -88,5 +83,71 @@ func (h Handler) SaveURL(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusCreated)
 	io.WriteString(res, responseBody)
 
-	log.Printf("Response Log. content-type: %s, shortURL: %s\n", res.Header().Get("content-type"), shortURL)
+	logger.Sugar.Infow(
+		"Response Log.",
+		"content-type", res.Header().Get("content-type"),
+		"shortURL", shortURL,
+	)
+}
+
+func (h Handler) Shorten(res http.ResponseWriter, req *http.Request) {
+	body, err := io.ReadAll(req.Body)
+	logger.Sugar.Infow("Response Shorten Log.", "Body", string(body))
+
+	//проверяем корректность url из тела запроса
+	if err != nil || len(body) == 0 {
+		http.Error(res, "The request body is missing", http.StatusBadRequest)
+		return
+	}
+
+	//в теле запроса получили json со ссылкой - десериализируем его в объект запроса
+	var r models.Request
+
+	if err = json.Unmarshal(body, &r); err != nil {
+		http.Error(res, "Bad json", http.StatusBadRequest)
+		return
+	}
+
+	if _, errParseURL := url.Parse(r.URL); errParseURL != nil {
+		http.Error(res, "Not valid result URL", http.StatusBadRequest)
+		return
+	}
+
+	//сохраняем в базу
+	shortURL, errSave := h.Urls.Save(r.URL)
+	if errSave != nil {
+		http.Error(res, "Save shortURL error", http.StatusBadRequest)
+		return
+	}
+
+	//формируем тело ответа и проверяем на валидность
+	var responseURL string
+	if h.ResultShortURL == req.Host {
+		responseURL = h.ResultShortURL + shortURL
+	} else {
+		responseURL = "http://" + req.Host + "/" + shortURL
+	}
+
+	if _, e := url.Parse(responseURL); e != nil {
+		http.Error(res, "Not valid result URL", http.StatusBadRequest)
+		return
+	}
+
+	//создаем объект ответа models.Response и сериализуем его в json resp, который возвращаем в теле ответа
+	resp, err := json.Marshal(models.Response{Result: responseURL})
+
+	if err != nil {
+		http.Error(res, "resp marshal error", http.StatusBadRequest)
+		return
+	}
+
+	res.Header().Set("content-type", "application/json")
+	res.WriteHeader(http.StatusCreated)
+	res.Write(resp)
+
+	logger.Sugar.Infow(
+		"Response Log.",
+		"content-type", res.Header().Get("content-type"),
+		"shortURL", shortURL,
+	)
 }
