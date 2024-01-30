@@ -67,12 +67,12 @@ func TestSaveURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
-			req, err_req := http.NewRequest(tt.Method, tt.URL, strings.NewReader(tt.Body))
-			require.NoError(t, err_req)
+			req, errReq := http.NewRequest(tt.Method, tt.URL, strings.NewReader(tt.Body))
+			require.NoError(t, errReq)
 
 			client := ts.Client()
-			resp, err_resp := client.Do(req)
-			require.NoError(t, err_resp)
+			resp, errResp := client.Do(req)
+			require.NoError(t, errResp)
 
 			defer resp.Body.Close()
 
