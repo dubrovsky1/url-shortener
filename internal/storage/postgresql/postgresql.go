@@ -29,29 +29,5 @@ func New(connectString string) (*Storage, error) {
 		log.Fatal("Postgresql New. PingContext error. ", err)
 	}
 
-	queryString := `
-						create schema if not exists dbo;
-	
-						grant all privileges on schema dbo to sa;
-	
-						create table if not exists dbo.shortenUrls
-						(
-							id serial primary key,
-							url text not null,
-							shortenUrl text not null unique
-						);
-	
-						comment on table dbo.shortenUrls is 'Таблица для сокращенных ссылок';
-	
-						comment on column dbo.shortenUrls.id is 'Идентификатор';
-						comment on column dbo.shortenUrls.url is 'Оригинальный URL';
-						comment on column dbo.shortenUrls.shortenUrl is 'Сокращенный URL';
-					`
-
-	_, err = db.Exec(queryString)
-	if err != nil {
-		log.Fatal("Postgresql New. Init query exec error. ", err)
-	}
-
 	return &Storage{DB: db}, nil
 }
