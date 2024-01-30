@@ -1,6 +1,7 @@
 package ping
 
 import (
+	"github.com/dubrovsky1/url-shortener/internal/config"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/gzip"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
@@ -15,12 +16,13 @@ import (
 
 func TestPing(t *testing.T) {
 	logger.Initialize()
+	flags := config.ParseFlags()
 
 	tests := []models.RequestParams{
 		{
 			Name:             "Ping. Success.",
 			Method:           http.MethodGet,
-			ConnectionString: "host=localhost port=5432 user=sa password=admin dbname=urls sslmode=disable",
+			ConnectionString: flags.ConnectionString,
 			Want: models.Want{
 				ExpectedCode: http.StatusOK,
 			},
@@ -37,7 +39,6 @@ func TestPing(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
-
 			r := chi.NewRouter()
 			r.Get("/ping", logger.WithLogging(gzip.GzipMiddleware(Ping(tt.ConnectionString))))
 			ts := httptest.NewServer(r)
