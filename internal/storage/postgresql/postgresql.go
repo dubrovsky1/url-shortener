@@ -15,7 +15,7 @@ type Storage struct {
 func New(connectString string) (*Storage, error) {
 	db, err := sql.Open("pgx", connectString)
 	if err != nil {
-		return nil, errors.New("DataBase connection error")
+		return nil, errors.New("database connection error")
 	}
 	defer db.Close()
 
@@ -23,7 +23,7 @@ func New(connectString string) (*Storage, error) {
 	defer cancel()
 
 	if err = db.PingContext(ctx); err != nil {
-		return nil, errors.New("DataBase connection error")
+		return nil, errors.New("database connection error")
 	}
 
 	queryString := `
@@ -47,7 +47,7 @@ func New(connectString string) (*Storage, error) {
 
 	_, err = db.Exec(queryString)
 	if err != nil {
-		return nil, errors.New("Init query exec error")
+		return nil, errors.New("init query exec error")
 	}
 
 	return &Storage{DB: db}, nil
