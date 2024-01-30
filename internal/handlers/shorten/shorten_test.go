@@ -41,7 +41,7 @@ func TestShorten(t *testing.T) {
 			Name:     "Shorten save url. Success.",
 			Method:   http.MethodPost,
 			URL:      ts.URL + "/api/shorten",
-			JsonBody: bytes.NewBufferString(`{"url": "https://practicum.yandex.ru"}`),
+			JSONBody: bytes.NewBufferString(`{"url": "https://practicum.yandex.ru"}`),
 			Want: models.Want{
 				ExpectedCode:        http.StatusCreated,
 				ExpectedContentType: "application/json",
@@ -51,7 +51,7 @@ func TestShorten(t *testing.T) {
 			Name:     "Shorten save url. No exists body.",
 			Method:   http.MethodPost,
 			URL:      ts.URL + "/api/shorten",
-			JsonBody: bytes.NewBufferString(""),
+			JSONBody: bytes.NewBufferString(""),
 			Want: models.Want{
 				ExpectedCode: http.StatusBadRequest,
 			},
@@ -60,7 +60,7 @@ func TestShorten(t *testing.T) {
 			Name:     "Shorten save url. Not valid json.",
 			Method:   http.MethodPost,
 			URL:      ts.URL + "/api/shorten",
-			JsonBody: bytes.NewBufferString(`{"url": https://practicum.yandex.ru}`),
+			JSONBody: bytes.NewBufferString(`{"url": https://practicum.yandex.ru}`),
 			Want: models.Want{
 				ExpectedCode: http.StatusBadRequest,
 			},
@@ -69,7 +69,7 @@ func TestShorten(t *testing.T) {
 			Name:     "Shorten save url. Not valid body original url.",
 			Method:   http.MethodPost,
 			URL:      ts.URL + "/api/shorten",
-			JsonBody: bytes.NewBufferString(`{"url": "sdaff/sde8%%%4325sa@.ru-213"}`),
+			JSONBody: bytes.NewBufferString(`{"url": "sdaff/sde8%%%4325sa@.ru-213"}`),
 			Want: models.Want{
 				ExpectedCode: http.StatusBadRequest,
 			},
@@ -78,7 +78,7 @@ func TestShorten(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
-			req, errReq := http.NewRequest(tt.Method, tt.URL, tt.JsonBody)
+			req, errReq := http.NewRequest(tt.Method, tt.URL, tt.JSONBody)
 			require.NoError(t, errReq)
 
 			client := ts.Client()

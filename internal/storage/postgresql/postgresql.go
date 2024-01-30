@@ -3,8 +3,9 @@ package postgresql
 import (
 	"context"
 	"database/sql"
-	"errors"
+	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"log"
 	"time"
 )
 
@@ -13,9 +14,11 @@ type Storage struct {
 }
 
 func New(connectString string) (*Storage, error) {
+	logger.Sugar.Infow("Postgresql New.", "connectString", connectString)
+
 	db, err := sql.Open("pgx", connectString)
 	if err != nil {
-		return nil, errors.New("database connection error")
+		log.Fatal("Postgresql New. Database connection error. ", err)
 	}
 	defer db.Close()
 
@@ -23,7 +26,7 @@ func New(connectString string) (*Storage, error) {
 	defer cancel()
 
 	if err = db.PingContext(ctx); err != nil {
-		return nil, errors.New("database connection error")
+		log.Fatal("Postgresql New. PingContext error. ", err)
 	}
 
 	queryString := `
@@ -47,7 +50,7 @@ func New(connectString string) (*Storage, error) {
 
 	_, err = db.Exec(queryString)
 	if err != nil {
-		return nil, errors.New("init query exec error")
+		log.Fatal("Postgresql New. Init query exec error. ", err)
 	}
 
 	return &Storage{DB: db}, nil

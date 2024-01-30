@@ -21,7 +21,7 @@ type RequestParams struct {
 	Method           string
 	URL              string
 	Body             string
-	JsonBody         *bytes.Buffer
+	JSONBody         *bytes.Buffer
 	ConnectionString string
 	Want             Want
 }
