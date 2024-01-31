@@ -75,7 +75,7 @@ func (s *Storage) Get(shortURL string) (string, error) {
 
 	err := row.Scan(&originalURL)
 	if err != nil {
-		return "", errors.New("Scan error")
+		return "", errors.New("scan error")
 	}
 
 	return originalURL, nil
