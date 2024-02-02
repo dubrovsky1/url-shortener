@@ -1,6 +1,7 @@
 package saveurl
 
 import (
+	"context"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"io"
 	"net/http"
@@ -9,11 +10,13 @@ import (
 
 //go:generate mockgen -source=saveurl.go -destination=../mocks/saveurl.go -package=mocks
 type URLSaver interface {
-	Save(string) (string, error)
+	SaveURL(context.Context, string) (string, error)
 }
 
 func SaveURL(db URLSaver, resultShortURL string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
+		ctx := req.Context()
+
 		body, err := io.ReadAll(req.Body)
 		logger.Sugar.Infow("Request Log.", "Body", string(body))
 
@@ -28,7 +31,7 @@ func SaveURL(db URLSaver, resultShortURL string) http.HandlerFunc {
 		}
 
 		//сохраняем в базу
-		shortURL, errSave := db.Save(string(body))
+		shortURL, errSave := db.SaveURL(ctx, string(body))
 		if errSave != nil {
 			http.Error(res, "Save shortURL error", http.StatusBadRequest)
 			return

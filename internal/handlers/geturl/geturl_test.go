@@ -27,8 +27,8 @@ func TestGetURL(t *testing.T) {
 	originalURL := "https://practicum.yandex.ru/"
 
 	//Заглушка реализует определенный интерфейс, определяем, что должна возвращать функция из этого интерфейса для различных тест-кейсов
-	storage.EXPECT().Get(shortURL).Return(originalURL, nil)
-	storage.EXPECT().Get("aaaaaaaaaa").Return("", errors.New("the short url is missing"))
+	storage.EXPECT().GetURL(gomock.Any(), shortURL).Return(originalURL, nil)
+	storage.EXPECT().GetURL(gomock.Any(), "aaaaaaaaaa").Return("", errors.New("the short url is missing"))
 
 	//создаем тестовый сервер, который будет проверять запросы, получаемые функцией-обработчиком хендлера geturl
 	logger.Initialize()

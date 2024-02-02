@@ -27,7 +27,7 @@ func TestShorten(t *testing.T) {
 	storage := mocks.NewMockURLSaver(ctrl)
 
 	//Передать в функцию можно что угодно - она должна это сохранить. Некорректрые url будут отсечены до сохранения в базу
-	storage.EXPECT().Save(gomock.Any())
+	storage.EXPECT().SaveURL(gomock.Any(), gomock.Any())
 
 	//создаем тестовый сервер, который будет проверять запросы, получаемые функцией-обработчиком хендлера shorten
 	logger.Initialize()

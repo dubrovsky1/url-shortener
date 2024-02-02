@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/dubrovsky1/url-shortener/internal/config"
+	"github.com/dubrovsky1/url-shortener/internal/handlers/batch"
 	"github.com/dubrovsky1/url-shortener/internal/handlers/geturl"
 	"github.com/dubrovsky1/url-shortener/internal/handlers/ping"
 	"github.com/dubrovsky1/url-shortener/internal/handlers/saveurl"
@@ -29,6 +30,7 @@ func main() {
 	r := chi.NewRouter()
 	r.Post("/", logger.WithLogging(gzip.GzipMiddleware(saveurl.SaveURL(storage, flags.ResultShortURL))))
 	r.Post("/api/shorten", logger.WithLogging(gzip.GzipMiddleware(shorten.Shorten(storage, flags.ResultShortURL))))
+	r.Post("/api/shorten/batch", logger.WithLogging(gzip.GzipMiddleware(batch.Batch(storage))))
 	r.Get("/{id}", logger.WithLogging(gzip.GzipMiddleware(geturl.GetURL(storage))))
 	r.Get("/ping", logger.WithLogging(gzip.GzipMiddleware(ping.Ping(flags.ConnectionString))))
 

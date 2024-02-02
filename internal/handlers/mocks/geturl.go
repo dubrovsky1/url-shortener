@@ -5,6 +5,7 @@
 package mocks
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -33,17 +34,17 @@ func (m *MockURLGetter) EXPECT() *MockURLGetterMockRecorder {
 	return m.recorder
 }
 
-// Get mocks base method.
-func (m *MockURLGetter) Get(arg0 string) (string, error) {
+// GetURL mocks base method.
+func (m *MockURLGetter) GetURL(arg0 context.Context, arg1 string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", arg0)
+	ret := m.ctrl.Call(m, "GetURL", arg0, arg1)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// Get indicates an expected call of Get.
-func (mr *MockURLGetterMockRecorder) Get(arg0 interface{}) *gomock.Call {
+// GetURL indicates an expected call of GetURL.
+func (mr *MockURLGetterMockRecorder) GetURL(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockURLGetter)(nil).Get), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetURL", reflect.TypeOf((*MockURLGetter)(nil).GetURL), arg0, arg1)
 }

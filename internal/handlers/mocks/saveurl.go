@@ -5,6 +5,7 @@
 package mocks
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -33,17 +34,17 @@ func (m *MockURLSaver) EXPECT() *MockURLSaverMockRecorder {
 	return m.recorder
 }
 
-// Save mocks base method.
-func (m *MockURLSaver) Save(arg0 string) (string, error) {
+// SaveURL mocks base method.
+func (m *MockURLSaver) SaveURL(arg0 context.Context, arg1 string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Save", arg0)
+	ret := m.ctrl.Call(m, "SaveURL", arg0, arg1)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// Save indicates an expected call of Save.
-func (mr *MockURLSaverMockRecorder) Save(arg0 interface{}) *gomock.Call {
+// SaveURL indicates an expected call of SaveURL.
+func (mr *MockURLSaverMockRecorder) SaveURL(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockURLSaver)(nil).Save), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveURL", reflect.TypeOf((*MockURLSaver)(nil).SaveURL), arg0, arg1)
 }
