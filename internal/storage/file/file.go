@@ -8,6 +8,7 @@ import (
 	"github.com/dubrovsky1/url-shortener/internal/generator"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
+	"github.com/dubrovsky1/url-shortener/internal/storage"
 	"log"
 	"net/url"
 	"os"
@@ -78,8 +79,14 @@ func New(filename string) (*Storage, error) {
 }
 
 func (s *Storage) SaveURL(ctx context.Context, originalURL string) (string, error) {
+	//поиск уже сохраненной оригинальной ссылки
+	shortURL, err := s.GetShortURL(ctx, originalURL)
+	if err != nil {
+		return shortURL, err
+	}
+
 	//гененрируем короткую ссылку
-	shortURL := generator.GetShortURL()
+	shortURL = generator.GetShortURL()
 
 	//создаем объект с сокращенной ссылкой, добавляем в хранилище и записываем в конец файла
 	su := ShortenURL{
@@ -132,13 +139,27 @@ func (s *Storage) GetURL(ctx context.Context, shortURL string) (string, error) {
 	return "", errors.New("the short url is missing")
 }
 
+func (s *Storage) GetShortURL(ctx context.Context, originalURL string) (string, error) {
+	for _, r := range s.Urls {
+		if r.OriginalURL == originalURL {
+			return r.ShortURL, storage.ErrUniqueIndex
+		}
+	}
+	return "", nil
+}
+
 func (s *Storage) InsertBatch(ctx context.Context, batch []models.BatchRequest, host string) ([]models.BatchResponse, error) {
 	var result []models.BatchResponse
 
 	for _, row := range batch {
-		shortURL, err := s.SaveURL(ctx, row.URL)
-		if err != nil {
-			log.Fatal("File InsertBatch. Insert error. ", err)
+		//поиск уже сохраненной оригинальной ссылки
+		shortURL, err := s.GetShortURL(ctx, row.URL)
+
+		if err == nil {
+			shortURL, err = s.SaveURL(ctx, row.URL)
+			if err != nil {
+				log.Fatal("File InsertBatch. Insert error. ", err)
+			}
 		}
 
 		//составляем результирующий сокращённый URL и добавляем в массив

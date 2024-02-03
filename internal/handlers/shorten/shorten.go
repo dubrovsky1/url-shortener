@@ -3,8 +3,10 @@ package shorten
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
+	"github.com/dubrovsky1/url-shortener/internal/storage"
 	"io"
 	"net/http"
 	"net/url"
@@ -40,11 +42,20 @@ func Shorten(db URLSaver, resultShortURL string) http.HandlerFunc {
 			return
 		}
 
+		res.Header().Set("content-type", "application/json")
+
 		//сохраняем в базу
 		shortURL, errSave := db.SaveURL(ctx, r.URL)
-		if errSave != nil {
+		if errSave != nil && !errors.Is(errSave, storage.ErrUniqueIndex) {
 			http.Error(res, "Save shortURL error", http.StatusBadRequest)
 			return
+		}
+
+		//если сохраняемый URL уже есть в базе, также формируем и возвращаем его короткую ссылку, но со статусом 409
+		if errors.Is(errSave, storage.ErrUniqueIndex) {
+			res.WriteHeader(http.StatusConflict)
+		} else {
+			res.WriteHeader(http.StatusCreated)
 		}
 
 		//формируем тело ответа и проверяем на валидность
@@ -68,14 +79,13 @@ func Shorten(db URLSaver, resultShortURL string) http.HandlerFunc {
 			return
 		}
 
-		res.Header().Set("content-type", "application/json")
-		res.WriteHeader(http.StatusCreated)
 		res.Write(resp)
 
 		logger.Sugar.Infow(
 			"Response Log.",
 			"content-type", res.Header().Get("content-type"),
 			"shortURL", shortURL,
+			"URL from body json", responseURL,
 		)
 	}
 }

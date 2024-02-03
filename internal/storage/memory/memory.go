@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
+	"github.com/dubrovsky1/url-shortener/internal/storage"
 	"net/url"
 
 	"github.com/dubrovsky1/url-shortener/internal/generator"
@@ -19,8 +20,14 @@ func New() *Storage {
 }
 
 func (s *Storage) SaveURL(ctx context.Context, originalURL string) (string, error) {
+	//поиск уже сохраненной оригинальной ссылки
+	shortURL, err := s.GetShortURL(ctx, originalURL)
+	if err != nil {
+		return shortURL, err
+	}
+
 	//гененрируем короткую ссылку
-	shortURL := generator.GetShortURL()
+	shortURL = generator.GetShortURL()
 
 	//запоминаем url, соответствующий короткой ссылке
 	s.urls[shortURL] = originalURL
@@ -35,15 +42,29 @@ func (s *Storage) GetURL(ctx context.Context, shortURL string) (string, error) {
 	return s.urls[shortURL], nil
 }
 
+func (s *Storage) GetShortURL(ctx context.Context, originalURL string) (string, error) {
+	for su, ou := range s.urls {
+		if ou == originalURL {
+			return su, storage.ErrUniqueIndex
+		}
+	}
+	return "", nil
+}
+
 func (s *Storage) InsertBatch(ctx context.Context, batch []models.BatchRequest, host string) ([]models.BatchResponse, error) {
 	var result []models.BatchResponse
 
 	for _, row := range batch {
-		//гененрируем короткую ссылку
-		shortURL := generator.GetShortURL()
+		//поиск уже сохраненной оригинальной ссылки
+		shortURL, err := s.GetShortURL(ctx, row.URL)
 
-		//запоминаем url, соответствующий короткой ссылке
-		s.urls[shortURL] = row.URL
+		if err == nil {
+			//гененрируем короткую ссылку
+			shortURL = generator.GetShortURL()
+
+			//запоминаем url, соответствующий короткой ссылке
+			s.urls[shortURL] = row.URL
+		}
 
 		//составляем результирующий сокращённый URL и добавляем в массив
 		resultShortURL := "http://" + host + "/" + shortURL

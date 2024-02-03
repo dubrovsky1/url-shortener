@@ -24,6 +24,7 @@ type Want struct {
 	ExpectedCode        int
 	ExpectedContentType string
 	ExpectedLocation    string
+	ExpectedShortURL    string
 }
 
 type RequestParams struct {

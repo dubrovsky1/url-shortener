@@ -7,6 +7,9 @@ import (
 	"github.com/dubrovsky1/url-shortener/internal/generator"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
+	"github.com/dubrovsky1/url-shortener/internal/storage"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"log"
 	"net/url"
@@ -31,18 +34,20 @@ func New(connectString string) (*Storage, error) {
 	}
 
 	queryString := `
-						create table if not exists shorten_urls
-						(
-							id             serial primary key,
-							original_url   text   not null,
-							shorten_url    text   not null unique
-						);
-	
-						comment on table shorten_urls is 'Таблица для сокращенных ссылок';
-	
-						comment on column shorten_urls.id is 'Идентификатор';
-						comment on column shorten_urls.original_url is 'Оригинальный URL';
-						comment on column shorten_urls.shorten_url is 'Сокращенный URL';
+                        create table if not exists shorten_urls
+                        (
+                            id             serial primary key,
+                            original_url   text   not null,
+                            shorten_url    text   not null unique
+                        );
+                        
+                        comment on table shorten_urls is 'Таблица для сокращенных ссылок';
+                        
+                        comment on column shorten_urls.id is 'Идентификатор';
+                        comment on column shorten_urls.original_url is 'Оригинальный URL';
+                        comment on column shorten_urls.shorten_url is 'Сокращенный URL';
+                                
+                        create unique index if not exists uix_original_url on shorten_urls (original_url);
 					`
 
 	_, err = db.ExecContext(ctx, queryString)
@@ -64,11 +69,28 @@ func (s *Storage) SaveURL(ctx context.Context, originalURL string) (string, erro
 													shorten_url
 												) 
 												select $1 as original_url, 
-												       $2 as shorten_url; 
+												       $2 as shorten_url;
 		`, originalURL, shortURL,
 	)
 
 	if err != nil {
+		//проверка на ошибку вставки при нарушении уникальности индекса по оригинальным ссылкам
+		var pgErr *pgconn.PgError
+
+		//As - попытка привести возникшую при запросе ошибку err к "ошибкам в базах postgres"
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+			err = storage.ErrUniqueIndex
+
+			//поиск короткой ссылки по уже сохраненному в бд оригинальному URL
+			var errGetShortURL error
+			shortURL, errGetShortURL = s.GetShortURL(ctx, originalURL)
+			if errGetShortURL != nil {
+				log.Fatal("Postgresql Save. Find ShortURL error. ", err)
+			}
+
+			return shortURL, err
+		}
+		//паника, в случае, если возникла ошибка, которая не связана с дублированием originalURL
 		log.Fatal("Postgresql Save. Insert error. ", err)
 	}
 
@@ -93,6 +115,24 @@ func (s *Storage) GetURL(ctx context.Context, shortURL string) (string, error) {
 	return originalURL, nil
 }
 
+func (s *Storage) GetShortURL(ctx context.Context, originalURL string) (string, error) {
+	var shortURL string
+
+	row := s.DB.QueryRowContext(ctx, `
+												select s.shorten_url 
+												from shorten_urls s 
+												where s.original_url = $1;
+		`, originalURL,
+	)
+
+	err := row.Scan(&shortURL)
+	if err != nil {
+		return "", errors.New("scan error")
+	}
+
+	return shortURL, nil
+}
+
 func (s *Storage) InsertBatch(ctx context.Context, batch []models.BatchRequest, host string) ([]models.BatchResponse, error) {
 	var result []models.BatchResponse
 
@@ -104,27 +144,46 @@ func (s *Storage) InsertBatch(ctx context.Context, batch []models.BatchRequest, 
 	// если Commit будет раньше, то откат проигнорируется
 	defer tx.Rollback()
 
-	//подготовка скомпилированного запроса
-	stmt, err := tx.PrepareContext(ctx, `
-													insert into shorten_urls 
-													(
-														original_url, 
-														shorten_url
-													) 
-													select $1 as original_url, 
-												    	   $2 as shorten_url;
+	//подготовка скомпилированных запросов
+	insertQuery, err := tx.PrepareContext(ctx, `
+                                                   insert into shorten_urls 
+                                                   (
+                                                       original_url, 
+                                                       shorten_url
+                                                   ) 
+                                                   select $1 as original_url, 
+                                                          $2 as shorten_url
+                                                   on conflict (original_url) 
+                                                   do nothing;
 	`)
 	if err != nil {
-		log.Fatal("Postgresql InsertBatch. Prepare query error. ", err)
+		log.Fatal("Postgresql InsertBatch. Prepare query insert error. ", err)
 	}
-	defer stmt.Close()
+	defer insertQuery.Close()
+
+	selectShortURLQuery, err := tx.PrepareContext(ctx, `
+                                                                 select su.shorten_url
+                                                                 from shorten_urls su
+                                                                 where su.original_url = $1;
+	`)
+	if err != nil {
+		log.Fatal("Postgresql InsertBatch. Prepare query select shorten_url error. ", err)
+	}
+	defer selectShortURLQuery.Close()
 
 	for _, row := range batch {
 		//гененрируем короткую ссылку
 		shortURL := generator.GetShortURL()
 
+		//прикрепляем к транзакции выполнение запроса поиска shorten_url, если original_url уже есть в базе
+		res := selectShortURLQuery.QueryRowContext(ctx, row.URL)
+		err = res.Scan(&shortURL)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			log.Fatal("Postgresql InsertBatch. Scan error. ", err)
+		}
+
 		//прикрепляем к транзакции выполнение запроса вставки, передавая в скомпилированный запрос данные по каждой ссылке из входящего слайса
-		_, err = stmt.ExecContext(ctx, row.URL, shortURL)
+		_, err = insertQuery.ExecContext(ctx, row.URL, shortURL)
 		if err != nil {
 			log.Fatal("Postgresql InsertBatch. ExecContext error. ", err)
 		}

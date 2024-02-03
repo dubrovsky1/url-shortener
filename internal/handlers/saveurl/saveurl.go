@@ -2,7 +2,9 @@ package saveurl
 
 import (
 	"context"
+	"errors"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
+	"github.com/dubrovsky1/url-shortener/internal/storage"
 	"io"
 	"net/http"
 	"net/url"
@@ -30,11 +32,20 @@ func SaveURL(db URLSaver, resultShortURL string) http.HandlerFunc {
 			return
 		}
 
+		res.Header().Set("content-type", "text/plain")
+
 		//сохраняем в базу
 		shortURL, errSave := db.SaveURL(ctx, string(body))
-		if errSave != nil {
+		if errSave != nil && !errors.Is(errSave, storage.ErrUniqueIndex) {
 			http.Error(res, "Save shortURL error", http.StatusBadRequest)
 			return
+		}
+
+		//если сохраняемый URL уже есть в базе, также формируем и возвращаем его короткую ссылку, но со статусом 409
+		if errors.Is(errSave, storage.ErrUniqueIndex) {
+			res.WriteHeader(http.StatusConflict)
+		} else {
+			res.WriteHeader(http.StatusCreated)
 		}
 
 		//формируем тело ответа и проверяем на валидность
@@ -50,14 +61,13 @@ func SaveURL(db URLSaver, resultShortURL string) http.HandlerFunc {
 			return
 		}
 
-		res.Header().Set("content-type", "text/plain")
-		res.WriteHeader(http.StatusCreated)
 		io.WriteString(res, responseBody)
 
 		logger.Sugar.Infow(
 			"Response Log.",
 			"content-type", res.Header().Get("content-type"),
 			"shortURL", shortURL,
+			"Body", responseBody,
 		)
 	}
 }
