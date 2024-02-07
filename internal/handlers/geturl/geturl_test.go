@@ -17,43 +17,39 @@ import (
 )
 
 func TestGetURL(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	//определяем хранилище-заглушку
-	storage := mocks.NewMockURLGetter(ctrl)
-
-	shortURL := "4fafrx"
-	originalURL := "https://practicum.yandex.ru/"
-
-	//Заглушка реализует определенный интерфейс, определяем, что должна возвращать функция из этого интерфейса для различных тест-кейсов
-	storage.EXPECT().GetURL(gomock.Any(), shortURL).Return(originalURL, nil)
-	storage.EXPECT().GetURL(gomock.Any(), "aaaaaaaaaa").Return("", errors.New("the short url is missing"))
-
-	//создаем тестовый сервер, который будет проверять запросы, получаемые функцией-обработчиком хендлера geturl
 	logger.Initialize()
-	r := chi.NewRouter()
-	r.Get("/{id}", logger.WithLogging(gzip.GzipMiddleware(GetURL(storage))))
-	ts := httptest.NewServer(r)
-	defer ts.Close()
 
-	tests := []models.RequestParams{
+	tests := []models.TestCase{
 		{
-			Name:   "Get url. Success.",
-			Method: http.MethodGet,
-			URL:    ts.URL + "/" + shortURL,
-			Body:   "",
+			Name: "Get url. Success.",
+			Ms: models.MockStorage{
+				Ctrl:        gomock.NewController(t),
+				OriginalURL: "https://practicum.yandex.ru/",
+				ShortURL:    "4fafrx",
+				Error:       nil,
+			},
+			Rp: models.RequestParams{
+				Method: http.MethodGet,
+				Body:   "",
+			},
 			Want: models.Want{
 				ExpectedCode:        http.StatusTemporaryRedirect,
 				ExpectedContentType: "text/plain",
-				ExpectedLocation:    originalURL,
+				ExpectedLocation:    "https://practicum.yandex.ru/",
 			},
 		},
 		{
-			Name:   "Get. Not exists short url.",
-			Method: http.MethodGet,
-			URL:    ts.URL + "/aaaaaaaaaa",
-			Body:   "",
+			Name: "Get. Not exists short url.",
+			Ms: models.MockStorage{
+				Ctrl:        gomock.NewController(t),
+				OriginalURL: "",
+				ShortURL:    "abcdef",
+				Error:       errors.New("the short url is missing"),
+			},
+			Rp: models.RequestParams{
+				Method: http.MethodGet,
+				Body:   "",
+			},
 			Want: models.Want{
 				ExpectedCode: http.StatusBadRequest,
 			},
@@ -62,7 +58,22 @@ func TestGetURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
-			req, errReq := http.NewRequest(tt.Method, tt.URL, strings.NewReader(tt.Body))
+			//хранилище-заглушка
+			defer tt.Ms.Ctrl.Finish()
+			storage := mocks.NewMockURLGetter(tt.Ms.Ctrl)
+			storage.EXPECT().GetURL(gomock.Any(), tt.Ms.ShortURL).Return(tt.Ms.OriginalURL, tt.Ms.Error)
+
+			//маршрутизация запроса
+			r := chi.NewRouter()
+			r.Get("/{id}", logger.WithLogging(gzip.GzipMiddleware(GetURL(storage))))
+
+			//создание http сервера
+			ts := httptest.NewServer(r)
+			defer ts.Close()
+
+			URL := ts.URL + "/" + tt.Ms.ShortURL
+
+			req, errReq := http.NewRequest(tt.Rp.Method, URL, strings.NewReader(tt.Rp.Body))
 			require.NoError(t, errReq)
 
 			//запрет редиректа
@@ -80,7 +91,7 @@ func TestGetURL(t *testing.T) {
 
 			if tt.Want.ExpectedCode != http.StatusBadRequest {
 				assert.Equal(t, tt.Want.ExpectedContentType, resp.Header.Get("content-type"), "content-type не совпадает с ожидаемым")
-				assert.Equal(t, originalURL, resp.Header.Get("Location"), "Location не совпадает с ожидаемым")
+				assert.Equal(t, tt.Ms.OriginalURL, resp.Header.Get("Location"), "Location не совпадает с ожидаемым")
 			}
 
 			t.Log("=============================================================>")

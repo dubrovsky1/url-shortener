@@ -1,6 +1,9 @@
 package models
 
-import "bytes"
+import (
+	"bytes"
+	"github.com/golang/mock/gomock"
+)
 
 type Request struct {
 	URL string `json:"url"`
@@ -28,11 +31,23 @@ type Want struct {
 }
 
 type RequestParams struct {
-	Name             string
 	Method           string
 	URL              string
 	Body             string
 	JSONBody         *bytes.Buffer
 	ConnectionString string
-	Want             Want
+}
+
+type MockStorage struct {
+	Ctrl        *gomock.Controller
+	OriginalURL string
+	ShortURL    string
+	Error       error
+}
+
+type TestCase struct {
+	Name string
+	Ms   MockStorage
+	Rp   RequestParams
+	Want Want
 }

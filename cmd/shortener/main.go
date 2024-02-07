@@ -10,9 +10,6 @@ import (
 	"github.com/dubrovsky1/url-shortener/internal/middleware/gzip"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/storage"
-	"github.com/dubrovsky1/url-shortener/internal/storage/file"
-	"github.com/dubrovsky1/url-shortener/internal/storage/memory"
-	"github.com/dubrovsky1/url-shortener/internal/storage/postgresql"
 	"github.com/go-chi/chi/v5"
 	"log"
 	"net/http"
@@ -25,7 +22,8 @@ func main() {
 	logger.Initialize()
 	logger.Sugar.Infow("Flags:", "-a", flags.Host, "-b", flags.ResultShortURL, "-f", flags.FileStoragePath, "-d", flags.ConnectionString)
 
-	storage := getStorage(flags)
+	storage := storage.GetStorage(flags)
+	//defer storage.Close()
 
 	r := chi.NewRouter()
 	r.Post("/", logger.WithLogging(gzip.GzipMiddleware(saveurl.SaveURL(storage, flags.ResultShortURL))))
@@ -36,24 +34,4 @@ func main() {
 
 	logger.Sugar.Infow("Server is listening", "host", flags.Host)
 	log.Fatal(http.ListenAndServe(flags.Host, r))
-}
-
-func getStorage(flags config.Config) storage.Repository {
-	var db storage.Repository
-	var err error
-
-	if flags.ConnectionString != "" {
-		db, err = postgresql.New(flags.ConnectionString)
-		if err != nil {
-			log.Fatal("Postgresql storage init error", err)
-		}
-	} else if flags.FileStoragePath != "" {
-		db, err = file.New(flags.FileStoragePath)
-		if err != nil {
-			log.Fatal("File storage init error", err)
-		}
-	} else {
-		db = memory.New()
-	}
-	return db
 }

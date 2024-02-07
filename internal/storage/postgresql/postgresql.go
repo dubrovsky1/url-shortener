@@ -7,7 +7,7 @@ import (
 	"github.com/dubrovsky1/url-shortener/internal/generator"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
-	"github.com/dubrovsky1/url-shortener/internal/storage"
+	"github.com/dubrovsky1/url-shortener/internal/storage/repository"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -79,19 +79,20 @@ func (s *Storage) SaveURL(ctx context.Context, originalURL string) (string, erro
 
 		//As - попытка привести возникшую при запросе ошибку err к "ошибкам в базах postgres"
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
-			err = storage.ErrUniqueIndex
+			err = repository.ErrUniqueIndex
 
 			//поиск короткой ссылки по уже сохраненному в бд оригинальному URL
 			var errGetShortURL error
 			shortURL, errGetShortURL = s.GetShortURL(ctx, originalURL)
 			if errGetShortURL != nil {
-				log.Fatal("Postgresql Save. Find ShortURL error. ", err)
+				logger.Sugar.Infow("Postgresql SaveURL. Find ShortURL error.")
+				return "", errGetShortURL
 			}
-
 			return shortURL, err
 		}
-		//паника, в случае, если возникла ошибка, которая не связана с дублированием originalURL
-		log.Fatal("Postgresql Save. Insert error. ", err)
+		//случай, если возникла ошибка, которая не связана с дублированием originalURL
+		logger.Sugar.Infow("Postgresql SaveURL. Insert error.")
+		return "", err
 	}
 
 	return shortURL, nil
@@ -109,9 +110,9 @@ func (s *Storage) GetURL(ctx context.Context, shortURL string) (string, error) {
 
 	err := row.Scan(&originalURL)
 	if err != nil {
-		return "", errors.New("scan error")
+		logger.Sugar.Infow("Postgresql GetURL. Scan error.")
+		return "", err
 	}
-
 	return originalURL, nil
 }
 
@@ -127,7 +128,8 @@ func (s *Storage) GetShortURL(ctx context.Context, originalURL string) (string, 
 
 	err := row.Scan(&shortURL)
 	if err != nil {
-		return "", errors.New("scan error")
+		logger.Sugar.Infow("Postgresql GetShortURL. Scan error.")
+		return "", err
 	}
 
 	return shortURL, nil
@@ -139,7 +141,8 @@ func (s *Storage) InsertBatch(ctx context.Context, batch []models.BatchRequest, 
 	//открытие транзакции
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
-		log.Fatal("Postgresql InsertBatch. Begin transaction error. ", err)
+		logger.Sugar.Infow("Postgresql InsertBatch. Begin transaction error.")
+		return nil, err
 	}
 	// если Commit будет раньше, то откат проигнорируется
 	defer tx.Rollback()
@@ -157,7 +160,8 @@ func (s *Storage) InsertBatch(ctx context.Context, batch []models.BatchRequest, 
                                                    do nothing;
 	`)
 	if err != nil {
-		log.Fatal("Postgresql InsertBatch. Prepare query insert error. ", err)
+		logger.Sugar.Infow("Postgresql InsertBatch. Prepare query insert error.")
+		return nil, err
 	}
 	defer insertQuery.Close()
 
@@ -167,7 +171,8 @@ func (s *Storage) InsertBatch(ctx context.Context, batch []models.BatchRequest, 
                                                                  where su.original_url = $1;
 	`)
 	if err != nil {
-		log.Fatal("Postgresql InsertBatch. Prepare query select shorten_url error. ", err)
+		logger.Sugar.Infow("Postgresql InsertBatch. Prepare query select shorten_url error.")
+		return nil, err
 	}
 	defer selectShortURLQuery.Close()
 
@@ -179,13 +184,15 @@ func (s *Storage) InsertBatch(ctx context.Context, batch []models.BatchRequest, 
 		res := selectShortURLQuery.QueryRowContext(ctx, row.URL)
 		err = res.Scan(&shortURL)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			log.Fatal("Postgresql InsertBatch. Scan error. ", err)
+			logger.Sugar.Infow("Postgresql InsertBatch. Scan error.")
+			return nil, err
 		}
 
 		//прикрепляем к транзакции выполнение запроса вставки, передавая в скомпилированный запрос данные по каждой ссылке из входящего слайса
 		_, err = insertQuery.ExecContext(ctx, row.URL, shortURL)
 		if err != nil {
-			log.Fatal("Postgresql InsertBatch. ExecContext error. ", err)
+			logger.Sugar.Infow("Postgresql InsertBatch. ExecContext error.")
+			return nil, err
 		}
 
 		//составляем результирующий сокращённый URL и добавляем в слайс

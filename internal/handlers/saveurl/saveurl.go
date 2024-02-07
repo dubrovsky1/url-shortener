@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
-	"github.com/dubrovsky1/url-shortener/internal/storage"
+	"github.com/dubrovsky1/url-shortener/internal/storage/repository"
 	"io"
 	"net/http"
 	"net/url"
@@ -36,13 +36,13 @@ func SaveURL(db URLSaver, resultShortURL string) http.HandlerFunc {
 
 		//сохраняем в базу
 		shortURL, errSave := db.SaveURL(ctx, string(body))
-		if errSave != nil && !errors.Is(errSave, storage.ErrUniqueIndex) {
+		if errSave != nil && !errors.Is(errSave, repository.ErrUniqueIndex) {
 			http.Error(res, "Save shortURL error", http.StatusBadRequest)
 			return
 		}
 
 		//если сохраняемый URL уже есть в базе, также формируем и возвращаем его короткую ссылку, но со статусом 409
-		if errors.Is(errSave, storage.ErrUniqueIndex) {
+		if errors.Is(errSave, repository.ErrUniqueIndex) {
 			res.WriteHeader(http.StatusConflict)
 		} else {
 			res.WriteHeader(http.StatusCreated)

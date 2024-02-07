@@ -8,7 +8,7 @@ import (
 	"github.com/dubrovsky1/url-shortener/internal/generator"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
-	"github.com/dubrovsky1/url-shortener/internal/storage"
+	"github.com/dubrovsky1/url-shortener/internal/storage/repository"
 	"log"
 	"net/url"
 	"os"
@@ -142,7 +142,7 @@ func (s *Storage) GetURL(ctx context.Context, shortURL string) (string, error) {
 func (s *Storage) GetShortURL(ctx context.Context, originalURL string) (string, error) {
 	for _, r := range s.Urls {
 		if r.OriginalURL == originalURL {
-			return r.ShortURL, storage.ErrUniqueIndex
+			return r.ShortURL, repository.ErrUniqueIndex
 		}
 	}
 	return "", nil
