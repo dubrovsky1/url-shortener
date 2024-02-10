@@ -22,8 +22,10 @@ func main() {
 	logger.Initialize()
 	logger.Sugar.Infow("Flags:", "-a", flags.Host, "-b", flags.ResultShortURL, "-f", flags.FileStoragePath, "-d", flags.ConnectionString)
 
-	storage := storage.GetStorage(flags)
-	//defer storage.Close()
+	storage, err := storage.GetStorage(flags)
+	if err != nil {
+		log.Fatal("Get storage error. ", err)
+	}
 
 	r := chi.NewRouter()
 	r.Post("/", logger.WithLogging(gzip.GzipMiddleware(saveurl.SaveURL(storage, flags.ResultShortURL))))

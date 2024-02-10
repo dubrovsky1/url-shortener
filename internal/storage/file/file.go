@@ -9,7 +9,6 @@ import (
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
 	"github.com/dubrovsky1/url-shortener/internal/storage/repository"
-	"log"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -38,7 +37,8 @@ func New(filename string) (*Storage, error) {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err = os.Mkdir(dir, 0666)
 		if err != nil {
-			log.Fatal("Create dir error ", err)
+			logger.Sugar.Infow("Create dir error.")
+			return nil, err
 		}
 	}
 
@@ -46,14 +46,16 @@ func New(filename string) (*Storage, error) {
 	if _, err := os.Stat(s.Filename); os.IsNotExist(err) {
 		newFile, errCreate := os.Create(s.Filename)
 		if errCreate != nil {
-			log.Fatal("Create file error ", errCreate)
+			logger.Sugar.Infow("Create file error.")
+			return nil, errCreate
 		}
 		newFile.Close()
 	}
 
 	file, err := os.Open(s.Filename)
 	if err != nil {
-		log.Fatal("Open file error ", err)
+		logger.Sugar.Infow("Open file error.")
+		return nil, err
 	}
 	defer file.Close()
 
@@ -68,7 +70,8 @@ func New(filename string) (*Storage, error) {
 		err = json.Unmarshal(data, &currentShortenURL)
 
 		if err != nil {
-			log.Fatal("Unmarshal currentShortenURL error ", err)
+			logger.Sugar.Infow("Unmarshal currentShortenURL error.")
+			return nil, err
 		}
 		s.Urls = append(s.Urls, currentShortenURL)
 
@@ -100,13 +103,15 @@ func (s *Storage) SaveURL(ctx context.Context, originalURL string) (string, erro
 
 	data, err := json.Marshal(&su)
 	if err != nil {
-		log.Fatal("Marshal su error ", err)
+		logger.Sugar.Infow("Marshal su error.")
+		return "", err
 	}
 
 	//открываем файл, чтобы начать с ним работать
 	file, err := os.OpenFile(s.Filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		log.Fatal("Open file error ", err)
+		logger.Sugar.Infow("Open file error.")
+		return "", err
 	}
 	defer file.Close()
 
@@ -115,12 +120,14 @@ func (s *Storage) SaveURL(ctx context.Context, originalURL string) (string, erro
 
 	// записываем событие в буфер
 	if _, err = writer.Write(data); err != nil {
-		log.Fatal("Write file error ", err)
+		logger.Sugar.Infow("Write file error.")
+		return "", err
 	}
 
 	// добавляем перенос строки
 	if err = writer.WriteByte('\n'); err != nil {
-		log.Fatal("Write \\n error ", err)
+		logger.Sugar.Infow("Write \\n error.")
+		return "", err
 	}
 
 	// записываем буфер в файл
@@ -158,7 +165,8 @@ func (s *Storage) InsertBatch(ctx context.Context, batch []models.BatchRequest, 
 		if err == nil {
 			shortURL, err = s.SaveURL(ctx, row.URL)
 			if err != nil {
-				log.Fatal("File InsertBatch. Insert error. ", err)
+				logger.Sugar.Infow("File InsertBatch. Insert error.")
+				return nil, err
 			}
 		}
 

@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"log"
 	"net/url"
 	"time"
 )
@@ -23,14 +22,16 @@ type Storage struct {
 func New(connectString string) (*Storage, error) {
 	db, err := sql.Open("pgx", connectString)
 	if err != nil {
-		log.Fatal("Postgresql New. Database connection error. ", err)
+		logger.Sugar.Infow("Postgresql New. Database connection error.")
+		return nil, err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	if err = db.PingContext(ctx); err != nil {
-		log.Fatal("Postgresql New. PingContext error. ", err)
+		logger.Sugar.Infow("Postgresql New. PingContext error.")
+		return nil, err
 	}
 
 	queryString := `
@@ -52,7 +53,8 @@ func New(connectString string) (*Storage, error) {
 
 	_, err = db.ExecContext(ctx, queryString)
 	if err != nil {
-		log.Fatal("Postgresql New. Init query exec error. ", err)
+		logger.Sugar.Infow("Postgresql New. Init query exec error.")
+		return nil, err
 	}
 
 	return &Storage{DB: db}, nil
