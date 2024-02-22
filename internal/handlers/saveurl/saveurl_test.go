@@ -1,13 +1,16 @@
 package saveurl
 
 import (
-	"github.com/dubrovsky1/url-shortener/internal/handlers/mocks"
+	errs "github.com/dubrovsky1/url-shortener/internal/errors"
+	"github.com/dubrovsky1/url-shortener/internal/middleware/auth"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/gzip"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
-	"github.com/dubrovsky1/url-shortener/internal/storage/repository"
+	servmocks "github.com/dubrovsky1/url-shortener/internal/service/mocks"
+	"github.com/dubrovsky1/url-shortener/internal/storage/mocks"
 	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -27,6 +30,7 @@ func TestSaveURL(t *testing.T) {
 				Ctrl:        gomock.NewController(t),
 				OriginalURL: "https://practicum.yandex.ru/",
 				ShortURL:    "jB9Wbk",
+				UserId:      "d110588d-369d-4e96-82eb-3a40abd234b4",
 				Error:       nil,
 			},
 			Rp: models.RequestParams{
@@ -45,7 +49,7 @@ func TestSaveURL(t *testing.T) {
 				Ctrl:        gomock.NewController(t),
 				OriginalURL: "https://yandex.ru/",
 				ShortURL:    "2Yy05g",
-				Error:       repository.ErrUniqueIndex,
+				Error:       errs.ErrUniqueIndex,
 			},
 			Rp: models.RequestParams{
 				Method: http.MethodPost,
@@ -95,11 +99,29 @@ func TestSaveURL(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			defer tt.Ms.Ctrl.Finish()
 
-			storage := mocks.NewMockURLSaver(tt.Ms.Ctrl)
-			storage.EXPECT().SaveURL(gomock.Any(), tt.Ms.OriginalURL).Return(tt.Ms.ShortURL, tt.Ms.Error).AnyTimes()
+			storage := mocks.NewMockStorager(tt.Ms.Ctrl)
+			serv := servmocks.NewMockStorager(tt.Ms.Ctrl)
+			//serv := service.New(storage)
+
+			//var s service.Storager
+
+			userID, _ := uuid.Parse(tt.Ms.UserId)
+
+			item := models.ShortenURL{
+				OriginalURL: tt.Ms.OriginalURL,
+				UserID:      userID,
+			}
+
+			//s := gomock.NewController(t)
+			//defer s.Finish()
+			//s1 := mocks2.NewMockStorager(s)
+			//s1.EXPECT().SaveURL(gomock.Any(), item).Return(tt.Ms.ShortURL, tt.Ms.Error).AnyTimes()
+
+			storage.EXPECT().SaveURL(gomock.Any(), item).Return(tt.Ms.ShortURL, tt.Ms.Error).AnyTimes()
+			//s.EXPECT().SaveURL(gomock.Any(), item).Return(tt.Ms.ShortURL, tt.Ms.Error).AnyTimes()
 
 			r := chi.NewRouter()
-			r.Post("/", logger.WithLogging(gzip.GzipMiddleware(SaveURL(storage, "http://localhost:8080/"))))
+			r.Post("/", auth.Auth(logger.WithLogging(gzip.GzipMiddleware(SaveURL(serv, "http://localhost:8080/")))))
 
 			ts := httptest.NewServer(r)
 			defer ts.Close()
@@ -108,6 +130,18 @@ func TestSaveURL(t *testing.T) {
 
 			req, errReq := http.NewRequest(tt.Rp.Method, URL, strings.NewReader(tt.Rp.Body))
 			require.NoError(t, errReq)
+
+			//добавляем к запросу куку
+			token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MDg0Nzk1NjcsIlVzZXJJRCI6ImQxMTA1ODhkLTM2OWQtNGU5Ni04MmViLTNhNDBhYmQyMzRiNCJ9.idR8V6pRw4PUjda8gQGDGCwOgWBEUlaf_oiitMq3xXM"
+
+			c := &http.Cookie{
+				Name:     "userid",
+				Value:    token,
+				HttpOnly: true,
+				Secure:   true,
+			}
+
+			req.AddCookie(c)
 
 			client := ts.Client()
 			resp, errResp := client.Do(req)

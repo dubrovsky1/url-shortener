@@ -1,27 +1,25 @@
 package shorten
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
+	errs "github.com/dubrovsky1/url-shortener/internal/errors"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
-	"github.com/dubrovsky1/url-shortener/internal/storage/repository"
+	"github.com/dubrovsky1/url-shortener/internal/service"
+	"github.com/google/uuid"
 	"io"
 	"net/http"
 	"net/url"
 )
 
-type URLSaver interface {
-	SaveURL(context.Context, string) (string, error)
-}
-
-func Shorten(db URLSaver, resultShortURL string) http.HandlerFunc {
+func Shorten(s *service.Service, resultShortURL string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
-
+		userID := ctx.Value("UserID").(uuid.UUID)
 		body, err := io.ReadAll(req.Body)
-		logger.Sugar.Infow("Request shorten Log.", "Body", string(body))
+
+		logger.Sugar.Infow("Request shorten Log.", "Body", string(body), "userID", userID)
 
 		//проверяем корректность url из тела запроса
 		if err != nil {
@@ -44,15 +42,20 @@ func Shorten(db URLSaver, resultShortURL string) http.HandlerFunc {
 
 		res.Header().Set("content-type", "application/json")
 
+		item := models.ShortenURL{
+			OriginalURL: models.OriginalURL(r.URL),
+			UserID:      userID,
+		}
+
 		//сохраняем в базу
-		shortURL, errSave := db.SaveURL(ctx, r.URL)
-		if errSave != nil && !errors.Is(errSave, repository.ErrUniqueIndex) {
+		shortURL, errSave := s.SaveURL(ctx, item)
+		if errSave != nil && !errors.Is(errSave, errs.ErrUniqueIndex) {
 			http.Error(res, "Save shortURL error", http.StatusBadRequest)
 			return
 		}
 
 		//если сохраняемый URL уже есть в базе, также формируем и возвращаем его короткую ссылку, но со статусом 409
-		if errors.Is(errSave, repository.ErrUniqueIndex) {
+		if errors.Is(errSave, errs.ErrUniqueIndex) {
 			res.WriteHeader(http.StatusConflict)
 		} else {
 			res.WriteHeader(http.StatusCreated)
@@ -61,9 +64,9 @@ func Shorten(db URLSaver, resultShortURL string) http.HandlerFunc {
 		//формируем тело ответа и проверяем на валидность
 		var responseURL string
 		if resultShortURL == req.Host {
-			responseURL = resultShortURL + shortURL
+			responseURL = resultShortURL + string(shortURL)
 		} else {
-			responseURL = "http://" + req.Host + "/" + shortURL
+			responseURL = "http://" + req.Host + "/" + string(shortURL)
 		}
 
 		if _, e := url.Parse(responseURL); e != nil {

@@ -16,7 +16,7 @@ func ParseFlags() Config {
 	a := flag.String("a", "localhost:8080", "address and port to run server")
 	b := flag.String("b", "http://localhost:8080/", "base address result url")
 	f := flag.String("f", "/tmp/short-url-db.json", "short url file")
-	d := flag.String("d", "", "database connection string")
+	d := flag.String("d", "host=localhost port=5432 user=sa password=admin dbname=urls sslmode=disable", "database connection string")
 
 	flag.Parse()
 

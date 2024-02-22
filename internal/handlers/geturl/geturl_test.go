@@ -2,10 +2,11 @@ package geturl
 
 import (
 	"errors"
-	"github.com/dubrovsky1/url-shortener/internal/handlers/mocks"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/gzip"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
+	"github.com/dubrovsky1/url-shortener/internal/service"
+	"github.com/dubrovsky1/url-shortener/internal/storage/mocks"
 	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -60,18 +61,21 @@ func TestGetURL(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			//хранилище-заглушка
 			defer tt.Ms.Ctrl.Finish()
-			storage := mocks.NewMockURLGetter(tt.Ms.Ctrl)
+
+			storage := mocks.NewMockStorager(tt.Ms.Ctrl)
+			serv := service.New(storage)
+
 			storage.EXPECT().GetURL(gomock.Any(), tt.Ms.ShortURL).Return(tt.Ms.OriginalURL, tt.Ms.Error)
 
 			//маршрутизация запроса
 			r := chi.NewRouter()
-			r.Get("/{id}", logger.WithLogging(gzip.GzipMiddleware(GetURL(storage))))
+			r.Get("/{id}", logger.WithLogging(gzip.GzipMiddleware(GetURL(serv))))
 
 			//создание http сервера
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 
-			URL := ts.URL + "/" + tt.Ms.ShortURL
+			URL := ts.URL + "/" + string(tt.Ms.ShortURL)
 
 			req, errReq := http.NewRequest(tt.Rp.Method, URL, strings.NewReader(tt.Rp.Body))
 			require.NoError(t, errReq)
@@ -91,7 +95,7 @@ func TestGetURL(t *testing.T) {
 
 			if tt.Want.ExpectedCode != http.StatusBadRequest {
 				assert.Equal(t, tt.Want.ExpectedContentType, resp.Header.Get("content-type"), "content-type не совпадает с ожидаемым")
-				assert.Equal(t, tt.Ms.OriginalURL, resp.Header.Get("Location"), "Location не совпадает с ожидаемым")
+				assert.Equal(t, string(tt.Ms.OriginalURL), resp.Header.Get("Location"), "Location не совпадает с ожидаемым")
 			}
 
 			t.Log("=============================================================>")
