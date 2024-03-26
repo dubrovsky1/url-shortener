@@ -95,19 +95,19 @@ func (mr *MockStoragerMockRecorder) InsertBatch(arg0, arg1, arg2, arg3 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertBatch", reflect.TypeOf((*MockStorager)(nil).InsertBatch), arg0, arg1, arg2, arg3)
 }
 
-// ListByUserId mocks base method.
-func (m *MockStorager) ListByUserId(arg0 context.Context, arg1 uuid.UUID) ([]models.ShortenURL, error) {
+// ListByUserID mocks base method.
+func (m *MockStorager) ListByUserID(arg0 context.Context, arg1 uuid.UUID) ([]models.ShortenURL, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListByUserId", arg0, arg1)
+	ret := m.ctrl.Call(m, "ListByUserID", arg0, arg1)
 	ret0, _ := ret[0].([]models.ShortenURL)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ListByUserId indicates an expected call of ListByUserId.
-func (mr *MockStoragerMockRecorder) ListByUserId(arg0, arg1 interface{}) *gomock.Call {
+// ListByUserID indicates an expected call of ListByUserID.
+func (mr *MockStoragerMockRecorder) ListByUserID(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByUserId", reflect.TypeOf((*MockStorager)(nil).ListByUserId), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByUserID", reflect.TypeOf((*MockStorager)(nil).ListByUserID), arg0, arg1)
 }
 
 // SaveURL mocks base method.

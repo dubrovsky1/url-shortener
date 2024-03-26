@@ -8,13 +8,13 @@ import (
 	"net/http"
 )
 
-func ListByUserId(s *service.Service) http.HandlerFunc {
+func ListByUserID(s *service.Service) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
 		userID := ctx.Value("UserID").(uuid.UUID)
 		logger.Sugar.Infow("Request Log.", "UserId", userID)
 
-		result, err := s.ListByUserId(ctx, userID)
+		result, err := s.ListByUserID(ctx, userID)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return

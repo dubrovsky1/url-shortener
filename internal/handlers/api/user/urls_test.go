@@ -86,7 +86,7 @@ func TestListByUserId(t *testing.T) {
 			storage := mocks.NewMockStorager(tt.Ms.Ctrl)
 			serv := service.New(storage)
 
-			storage.EXPECT().ListByUserId(gomock.Any(), gomock.Any()).Return(tt.Ms.List, tt.Ms.Error)
+			storage.EXPECT().ListByUserID(gomock.Any(), gomock.Any()).Return(tt.Ms.List, tt.Ms.Error)
 
 			//маршрутизация запроса
 			r := chi.NewRouter()

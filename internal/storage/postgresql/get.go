@@ -44,7 +44,7 @@ func (s *Storage) GetShortURL(ctx context.Context, originalURL models.OriginalUR
 	return shortURL, nil
 }
 
-func (s *Storage) ListByUserId(ctx context.Context, u uuid.UUID) ([]models.ShortenURL, error) {
+func (s *Storage) ListByUserID(ctx context.Context, u uuid.UUID) ([]models.ShortenURL, error) {
 	var result []models.ShortenURL
 
 	rows, err := s.DB.QueryContext(ctx, `

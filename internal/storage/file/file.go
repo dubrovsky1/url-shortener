@@ -199,7 +199,7 @@ func (s *Storage) InsertBatch(ctx context.Context, batch []models.BatchRequest, 
 	return result, nil
 }
 
-func (s *Storage) ListByUserId(ctx context.Context, userID uuid.UUID) ([]models.ShortenURL, error) {
+func (s *Storage) ListByUserID(ctx context.Context, userID uuid.UUID) ([]models.ShortenURL, error) {
 	var result []models.ShortenURL
 
 	for _, row := range s.Urls {

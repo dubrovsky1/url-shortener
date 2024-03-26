@@ -25,7 +25,6 @@ type MockStorage struct {
 	Ctrl        *gomock.Controller
 	OriginalURL OriginalURL
 	ShortURL    ShortURL
-	UserId      string
 	BatchResp   []BatchResponse
 	List        []ShortenURL
 	Error       error

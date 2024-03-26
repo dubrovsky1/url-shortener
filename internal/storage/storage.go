@@ -18,7 +18,7 @@ type Storager interface {
 	GetURL(context.Context, models.ShortURL) (models.OriginalURL, error)
 	GetShortURL(context.Context, models.OriginalURL) (models.ShortURL, error)
 	InsertBatch(context.Context, []models.BatchRequest, models.Host, uuid.UUID) ([]models.BatchResponse, error)
-	ListByUserId(context.Context, uuid.UUID) ([]models.ShortenURL, error)
+	ListByUserID(context.Context, uuid.UUID) ([]models.ShortenURL, error)
 	io.Closer
 }
 

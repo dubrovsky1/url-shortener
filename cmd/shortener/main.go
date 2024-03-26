@@ -39,7 +39,7 @@ func main() {
 	r.Post("/api/shorten/batch", auth.Auth(logger.WithLogging(gzip.GzipMiddleware(shorten.Batch(serv)))))
 	r.Get("/{id}", logger.WithLogging(gzip.GzipMiddleware(geturl.GetURL(serv))))
 	r.Get("/ping", logger.WithLogging(gzip.GzipMiddleware(ping.Ping(flags.ConnectionString))))
-	r.Get("/api/user/urls", auth.Auth(logger.WithLogging(gzip.GzipMiddleware(user.ListByUserId(serv)))))
+	r.Get("/api/user/urls", auth.Auth(logger.WithLogging(gzip.GzipMiddleware(user.ListByUserID(serv)))))
 
 	logger.Sugar.Infow("Server is listening", "host", flags.Host)
 	log.Fatal(http.ListenAndServe(flags.Host, r))
