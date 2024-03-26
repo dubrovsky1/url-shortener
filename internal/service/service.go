@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/dubrovsky1/url-shortener/internal/generator"
 	"github.com/dubrovsky1/url-shortener/internal/models"
-	"github.com/dubrovsky1/url-shortener/internal/storage"
 	"github.com/google/uuid"
 )
 
@@ -19,12 +18,12 @@ type Storager interface {
 }
 
 type Service struct {
-	storage.Storager
+	storage Storager
 }
 
-func New(storage storage.Storager) *Service {
+func New(storage Storager) *Service {
 	return &Service{
-		Storager: storage,
+		storage: storage,
 	}
 }
 
@@ -32,7 +31,7 @@ func (s *Service) SaveURL(ctx context.Context, item models.ShortenURL) (models.S
 	//гененрируем короткую ссылку
 	item.ShortURL = models.ShortURL(generator.GetShortURL())
 
-	shortURL, err := s.Storager.SaveURL(ctx, item)
+	shortURL, err := s.storage.SaveURL(ctx, item)
 	if err != nil {
 		return shortURL, err
 	}
@@ -40,7 +39,7 @@ func (s *Service) SaveURL(ctx context.Context, item models.ShortenURL) (models.S
 }
 
 func (s *Service) GetURL(ctx context.Context, shortURL models.ShortURL) (models.OriginalURL, error) {
-	originalURL, err := s.Storager.GetURL(ctx, shortURL)
+	originalURL, err := s.storage.GetURL(ctx, shortURL)
 	if err != nil {
 		return originalURL, err
 	}
@@ -48,7 +47,7 @@ func (s *Service) GetURL(ctx context.Context, shortURL models.ShortURL) (models.
 }
 
 func (s *Service) InsertBatch(ctx context.Context, batch []models.BatchRequest, host models.Host, userID uuid.UUID) ([]models.BatchResponse, error) {
-	result, err := s.Storager.InsertBatch(ctx, batch, host, userID)
+	result, err := s.storage.InsertBatch(ctx, batch, host, userID)
 	if err != nil {
 		return result, err
 	}
@@ -56,7 +55,7 @@ func (s *Service) InsertBatch(ctx context.Context, batch []models.BatchRequest, 
 }
 
 func (s *Service) ListByUserId(ctx context.Context, userID uuid.UUID) ([]models.ShortenURL, error) {
-	result, err := s.Storager.ListByUserId(ctx, userID)
+	result, err := s.storage.ListByUserId(ctx, userID)
 	if err != nil {
 		return result, err
 	}

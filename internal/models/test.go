@@ -10,6 +10,7 @@ type Want struct {
 	ExpectedContentType string
 	ExpectedLocation    string
 	ExpectedShortURL    string
+	ExpectedJSONBody    string
 }
 
 type RequestParams struct {
@@ -25,6 +26,8 @@ type MockStorage struct {
 	OriginalURL OriginalURL
 	ShortURL    ShortURL
 	UserId      string
+	BatchResp   []BatchResponse
+	List        []ShortenURL
 	Error       error
 }
 

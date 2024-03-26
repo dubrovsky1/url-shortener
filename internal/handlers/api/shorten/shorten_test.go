@@ -1,6 +1,7 @@
-package saveurl
+package shorten
 
 import (
+	"bytes"
 	errs "github.com/dubrovsky1/url-shortener/internal/errors"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/auth"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/gzip"
@@ -15,16 +16,15 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 )
 
-func TestSaveURL(t *testing.T) {
+func TestShorten(t *testing.T) {
 	logger.Initialize()
 
 	tests := []models.TestCase{
 		{
-			Name: "Save url. Success.",
+			Name: "Shorten save url. Success.",
 			Ms: models.MockStorage{
 				Ctrl:        gomock.NewController(t),
 				OriginalURL: "https://practicum.yandex.ru/",
@@ -32,17 +32,17 @@ func TestSaveURL(t *testing.T) {
 				Error:       nil,
 			},
 			Rp: models.RequestParams{
-				Method: http.MethodPost,
-				Body:   "https://practicum.yandex.ru/",
+				Method:   http.MethodPost,
+				JSONBody: bytes.NewBufferString(`{"url": "https://practicum.yandex.ru/"}`),
 			},
 			Want: models.Want{
 				ExpectedCode:        http.StatusCreated,
-				ExpectedContentType: "text/plain",
+				ExpectedContentType: "application/json",
 				ExpectedShortURL:    "jB9Wbk",
 			},
 		},
 		{
-			Name: "Save url. Unique URL conflict.",
+			Name: "Shorten save url. Unique URL conflict.",
 			Ms: models.MockStorage{
 				Ctrl:        gomock.NewController(t),
 				OriginalURL: "https://yandex.ru/",
@@ -50,17 +50,17 @@ func TestSaveURL(t *testing.T) {
 				Error:       errs.ErrUniqueIndex,
 			},
 			Rp: models.RequestParams{
-				Method: http.MethodPost,
-				Body:   "https://yandex.ru/",
+				Method:   http.MethodPost,
+				JSONBody: bytes.NewBufferString(`{"url": "https://yandex.ru/"}`),
 			},
 			Want: models.Want{
 				ExpectedCode:        http.StatusConflict,
-				ExpectedContentType: "text/plain",
+				ExpectedContentType: "application/json",
 				ExpectedShortURL:    "2Yy05g",
 			},
 		},
 		{
-			Name: "Save url. No exists body.",
+			Name: "Shorten save url. No exists body.",
 			Ms: models.MockStorage{
 				Ctrl:        gomock.NewController(t),
 				OriginalURL: "https://yandex.ru/",
@@ -68,24 +68,40 @@ func TestSaveURL(t *testing.T) {
 				Error:       nil,
 			},
 			Rp: models.RequestParams{
-				Method: http.MethodPost,
-				Body:   "",
+				Method:   http.MethodPost,
+				JSONBody: bytes.NewBufferString(""),
 			},
 			Want: models.Want{
 				ExpectedCode: http.StatusBadRequest,
 			},
 		},
 		{
-			Name: "Save url. Not valid body original url.",
+			Name: "Shorten save url. Not valid json.",
 			Ms: models.MockStorage{
 				Ctrl:        gomock.NewController(t),
-				OriginalURL: "https://yandex.ru/",
+				OriginalURL: "https://practicum.yandex.ru",
 				ShortURL:    "2Yy05g",
 				Error:       nil,
 			},
 			Rp: models.RequestParams{
-				Method: http.MethodPost,
-				Body:   "sdaff/sde8%%%4325sa@.ru-213",
+				Method:   http.MethodPost,
+				JSONBody: bytes.NewBufferString(`{"url": https://practicum.yandex.ru}`),
+			},
+			Want: models.Want{
+				ExpectedCode: http.StatusBadRequest,
+			},
+		},
+		{
+			Name: "Shorten save url. Not valid body original url.",
+			Ms: models.MockStorage{
+				Ctrl:        gomock.NewController(t),
+				OriginalURL: "https://practicum.yandex.ru",
+				ShortURL:    "2Yy05g",
+				Error:       nil,
+			},
+			Rp: models.RequestParams{
+				Method:   http.MethodPost,
+				JSONBody: bytes.NewBufferString(`{"url": "sdaff/sde8%%%4325sa@.ru-213"}`),
 			},
 			Want: models.Want{
 				ExpectedCode: http.StatusBadRequest,
@@ -103,14 +119,14 @@ func TestSaveURL(t *testing.T) {
 			storage.EXPECT().SaveURL(gomock.Any(), gomock.Any()).Return(tt.Ms.ShortURL, tt.Ms.Error).AnyTimes()
 
 			r := chi.NewRouter()
-			r.Post("/", auth.Auth(logger.WithLogging(gzip.GzipMiddleware(SaveURL(serv, "http://localhost:8080/")))))
+			r.Post("/api/shorten", auth.Auth(logger.WithLogging(gzip.GzipMiddleware(Shorten(serv, "http://localhost:8080/")))))
 
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 
-			URL := ts.URL + "/"
+			URL := ts.URL + "/api/shorten"
 
-			req, errReq := http.NewRequest(tt.Rp.Method, URL, strings.NewReader(tt.Rp.Body))
+			req, errReq := http.NewRequest(tt.Rp.Method, URL, tt.Rp.JSONBody)
 			require.NoError(t, errReq)
 
 			client := ts.Client()
@@ -126,10 +142,11 @@ func TestSaveURL(t *testing.T) {
 
 			if tt.Want.ExpectedCode != http.StatusBadRequest {
 				assert.Equal(t, tt.Want.ExpectedContentType, resp.Header.Get("content-type"), "content-type не совпадает с ожидаемым")
-				assert.Equal(t, ts.URL+"/"+tt.Want.ExpectedShortURL, string(respBody), "Body не совпадает с ожидаемым")
+				assert.Equal(t, `{"result":"`+ts.URL+`/`+tt.Want.ExpectedShortURL+`"}`, string(respBody), "Body не совпадает с ожидаемым")
 			}
 
 			t.Log("=============================================================>")
 		})
 	}
+
 }

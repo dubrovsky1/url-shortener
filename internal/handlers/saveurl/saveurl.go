@@ -15,16 +15,7 @@ import (
 func SaveURL(s *service.Service, resultShortURL string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
-
-		//проверка наличия айди пользоователя в контексте
-		//var userID uuid.UUID
-		//val := ctx.Value("UserID").(uuid.UUID)
-		//if val == uuid.Nil {
-		//	userID = val.(uuid.UUID)
-		//}
-
 		userID := ctx.Value("UserID").(uuid.UUID)
-
 		body, err := io.ReadAll(req.Body)
 
 		logger.Sugar.Infow("Request Log.", "Body", string(body), "userID", userID)
