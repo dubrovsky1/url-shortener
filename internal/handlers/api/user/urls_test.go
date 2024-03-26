@@ -19,7 +19,7 @@ import (
 	"testing"
 )
 
-func TestListByUserId(t *testing.T) {
+func TestListByUserID(t *testing.T) {
 	logger.Initialize()
 
 	tests := []models.TestCase{
@@ -90,7 +90,7 @@ func TestListByUserId(t *testing.T) {
 
 			//маршрутизация запроса
 			r := chi.NewRouter()
-			r.Get("/api/user/urls", auth.Auth(logger.WithLogging(gzip.GzipMiddleware(ListByUserId(serv)))))
+			r.Get("/api/user/urls", auth.Auth(logger.WithLogging(gzip.GzipMiddleware(ListByUserID(serv)))))
 
 			//создание http сервера
 			ts := httptest.NewServer(r)
