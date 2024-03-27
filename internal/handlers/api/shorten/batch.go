@@ -14,7 +14,7 @@ import (
 func Batch(s *service.Service) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
-		userID := ctx.Value("UserID").(uuid.UUID)
+		userID := ctx.Value(models.KeyUserID("UserID")).(uuid.UUID)
 		body, err := io.ReadAll(req.Body)
 
 		logger.Sugar.Infow("Request batch Log.", "Body", string(body), "userID", userID)

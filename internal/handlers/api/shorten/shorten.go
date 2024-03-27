@@ -16,7 +16,7 @@ import (
 func Shorten(s *service.Service, resultShortURL string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
-		userID := ctx.Value("UserID").(uuid.UUID)
+		userID := ctx.Value(models.KeyUserID("UserID")).(uuid.UUID)
 		body, err := io.ReadAll(req.Body)
 
 		logger.Sugar.Infow("Request shorten Log.", "Body", string(body), "userID", userID)
