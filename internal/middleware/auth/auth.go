@@ -15,21 +15,16 @@ type Claims struct {
 	UserID uuid.UUID
 }
 
-type (
-	KeyType string
-	Token   string
-)
-
 const (
 	TokenExp                    = time.Hour * 3
-	SecretKey  KeyType          = "supersecretkey"
+	SecretKey                   = "supersecretkey"
 	CookieName                  = "userid"
 	KeyName    models.KeyUserID = "UserID"
 )
 
 func Auth(h http.HandlerFunc) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		var tokenString Token
+		var tokenString string
 		var userID uuid.UUID
 		var errToken, errGetUserID error
 
@@ -46,14 +41,14 @@ func Auth(h http.HandlerFunc) http.HandlerFunc {
 
 			c := &http.Cookie{
 				Name:     CookieName,
-				Value:    string(tokenString),
+				Value:    tokenString,
 				HttpOnly: true,
 				Secure:   true,
 			}
 
 			http.SetCookie(res, c)
 		} else {
-			tokenString = Token(cookie.Value)
+			tokenString = cookie.Value
 		}
 
 		userID, errGetUserID = GetUserID(tokenString)
@@ -68,7 +63,7 @@ func Auth(h http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func BuildJWTString() (Token, error) {
+func BuildJWTString() (string, error) {
 	// создаём новый токен с алгоритмом подписи HS256 и утверждениями — Claims
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -86,13 +81,13 @@ func BuildJWTString() (Token, error) {
 	}
 
 	// возвращаем строку токена
-	return Token(tokenString), nil
+	return tokenString, nil
 }
 
-func GetUserID(tokenString Token) (uuid.UUID, error) {
+func GetUserID(tokenString string) (uuid.UUID, error) {
 	claims := &Claims{}
 
-	token, err := jwt.ParseWithClaims(string(tokenString), claims,
+	token, err := jwt.ParseWithClaims(tokenString, claims,
 		func(t *jwt.Token) (interface{}, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
