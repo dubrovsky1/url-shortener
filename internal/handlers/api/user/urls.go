@@ -3,6 +3,7 @@ package user
 import (
 	"encoding/json"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
+	"github.com/dubrovsky1/url-shortener/internal/models"
 	"github.com/dubrovsky1/url-shortener/internal/service"
 	"github.com/google/uuid"
 	"net/http"
@@ -11,7 +12,7 @@ import (
 func ListByUserID(s *service.Service) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
-		userID := ctx.Value("UserID").(uuid.UUID)
+		userID := ctx.Value(models.KeyUserID("UserID")).(uuid.UUID)
 		logger.Sugar.Infow("Request Log.", "UserId", userID)
 
 		result, err := s.ListByUserID(ctx, userID)

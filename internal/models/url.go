@@ -6,6 +6,7 @@ type (
 	OriginalURL string
 	ShortURL    string
 	Host        string
+	KeyUserID   string
 )
 
 type ShortenURL struct {
