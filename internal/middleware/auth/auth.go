@@ -14,10 +14,12 @@ type Claims struct {
 	UserID uuid.UUID
 }
 
+type KeyType string
+
 const (
-	TokenExp   = time.Hour * 3
-	SecretKey  = "supersecretkey"
-	CookieName = "userid"
+	TokenExp           = time.Hour * 3
+	SecretKey  KeyType = "supersecretkey"
+	CookieName         = "userid"
 )
 
 func Auth(h http.HandlerFunc) http.HandlerFunc {
