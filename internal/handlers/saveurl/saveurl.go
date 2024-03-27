@@ -1,32 +1,36 @@
 package saveurl
 
 import (
-	"context"
 	"errors"
+	errs "github.com/dubrovsky1/url-shortener/internal/errors"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
-	"github.com/dubrovsky1/url-shortener/internal/storage/repository"
+	"github.com/dubrovsky1/url-shortener/internal/models"
+	"github.com/dubrovsky1/url-shortener/internal/service"
+	"github.com/google/uuid"
 	"io"
 	"net/http"
 	"net/url"
 )
 
-//go:generate mockgen -source=saveurl.go -destination=../mocks/saveurl.go -package=mocks
-type URLSaver interface {
-	SaveURL(context.Context, string) (string, error)
-}
-
-func SaveURL(db URLSaver, resultShortURL string) http.HandlerFunc {
+func SaveURL(s *service.Service, resultShortURL string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
-
+		userID := ctx.Value(models.KeyUserID("UserID")).(uuid.UUID)
 		body, err := io.ReadAll(req.Body)
-		logger.Sugar.Infow("Request Log.", "Body", string(body))
+
+		logger.Sugar.Infow("Request Log.", "Body", string(body), "userID", userID)
+
+		item := models.ShortenURL{
+			OriginalURL: models.OriginalURL(body),
+			UserID:      userID,
+		}
 
 		//проверяем корректность url из тела запроса
 		if err != nil || len(body) == 0 {
 			http.Error(res, "The request body is missing", http.StatusBadRequest)
 			return
 		}
+
 		if _, errParseURL := url.Parse(string(body)); errParseURL != nil {
 			http.Error(res, "Not valid result URL", http.StatusBadRequest)
 			return
@@ -35,14 +39,14 @@ func SaveURL(db URLSaver, resultShortURL string) http.HandlerFunc {
 		res.Header().Set("content-type", "text/plain")
 
 		//сохраняем в базу
-		shortURL, errSave := db.SaveURL(ctx, string(body))
-		if errSave != nil && !errors.Is(errSave, repository.ErrUniqueIndex) {
+		shortURL, errSave := s.SaveURL(ctx, item)
+		if errSave != nil && !errors.Is(errSave, errs.ErrUniqueIndex) {
 			http.Error(res, "Save shortURL error", http.StatusBadRequest)
 			return
 		}
 
 		//если сохраняемый URL уже есть в базе, также формируем и возвращаем его короткую ссылку, но со статусом 409
-		if errors.Is(errSave, repository.ErrUniqueIndex) {
+		if errors.Is(errSave, errs.ErrUniqueIndex) {
 			res.WriteHeader(http.StatusConflict)
 		} else {
 			res.WriteHeader(http.StatusCreated)
@@ -51,9 +55,9 @@ func SaveURL(db URLSaver, resultShortURL string) http.HandlerFunc {
 		//формируем тело ответа и проверяем на валидность
 		var responseBody string
 		if resultShortURL == req.Host {
-			responseBody = resultShortURL + shortURL
+			responseBody = resultShortURL + string(shortURL)
 		} else {
-			responseBody = "http://" + req.Host + "/" + shortURL
+			responseBody = "http://" + req.Host + "/" + string(shortURL)
 		}
 
 		if _, e := url.Parse(responseBody); e != nil {
