@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
@@ -16,10 +17,9 @@ type Claims struct {
 }
 
 const (
-	TokenExp                    = time.Hour * 3
-	SecretKey                   = "supersecretkey"
-	CookieName                  = "userid"
-	KeyName    models.KeyUserID = "UserID"
+	TokenExp                   = time.Hour * 3
+	SecretKey                  = "supersecretkey"
+	KeyName   models.KeyUserID = "UserID"
 )
 
 func Auth(h http.HandlerFunc) http.HandlerFunc {
@@ -30,7 +30,7 @@ func Auth(h http.HandlerFunc) http.HandlerFunc {
 
 		//нужно получить токен для расшифровки id пользователя
 		//токен лежит в куке, если её нет - создаем новую, в которою записываем новый userID
-		cookie, err := req.Cookie(CookieName)
+		cookie, err := req.Cookie("userid")
 
 		if err == http.ErrNoCookie {
 			tokenString, errToken = BuildJWTString()
@@ -40,10 +40,8 @@ func Auth(h http.HandlerFunc) http.HandlerFunc {
 			}
 
 			c := &http.Cookie{
-				Name:     CookieName,
-				Value:    tokenString,
-				HttpOnly: true,
-				Secure:   true,
+				Name:  "userid",
+				Value: tokenString,
 			}
 
 			http.SetCookie(res, c)
@@ -56,6 +54,8 @@ func Auth(h http.HandlerFunc) http.HandlerFunc {
 			http.Error(res, errGetUserID.Error(), http.StatusUnauthorized)
 			return
 		}
+
+		logger.Sugar.Infow("Auth Log.", "token", tokenString, "userID", userID)
 
 		//Наследуем от контекста запроса новый контекст и записываем в него полученный или новый UserID
 		authContext := context.WithValue(req.Context(), KeyName, userID)
