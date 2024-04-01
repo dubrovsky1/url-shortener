@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"fmt"
-	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
@@ -55,7 +54,7 @@ func Auth(h http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		logger.Sugar.Infow("Auth Log.", "token", tokenString, "userID", userID)
+		//logger.Sugar.Infow("Auth Log.", "token", tokenString, "userID", userID)
 
 		//Наследуем от контекста запроса новый контекст и записываем в него полученный или новый UserID
 		authContext := context.WithValue(req.Context(), KeyName, userID)

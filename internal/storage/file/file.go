@@ -199,14 +199,23 @@ func (s *Storage) InsertBatch(ctx context.Context, batch []models.BatchRequest, 
 	return result, nil
 }
 
-func (s *Storage) ListByUserID(ctx context.Context, userID uuid.UUID) ([]models.ShortenURL, error) {
+func (s *Storage) ListByUserID(ctx context.Context, host models.Host, userID uuid.UUID) ([]models.ShortenURL, error) {
 	var result []models.ShortenURL
 
 	for _, row := range s.Urls {
 		if row.UserID == userID {
+
+			//составляем результирующий сокращённый URL и добавляем в массив
+			resultShortURL := "http://" + string(host) + "/" + string(row.ShortURL)
+
+			if _, e := url.Parse(resultShortURL); e != nil {
+				logger.Sugar.Infow("Postgresql ListByUserID. Not result URL.")
+				return nil, e
+			}
+
 			var curItem = models.ShortenURL{
 				OriginalURL: row.OriginalURL,
-				ShortURL:    row.ShortURL,
+				ShortURL:    models.ShortURL(resultShortURL),
 			}
 			result = append(result, curItem)
 		}

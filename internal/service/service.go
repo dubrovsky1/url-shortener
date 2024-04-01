@@ -14,7 +14,7 @@ type Storager interface {
 	SaveURL(context.Context, models.ShortenURL) (models.ShortURL, error)
 	GetURL(context.Context, models.ShortURL) (models.OriginalURL, error)
 	InsertBatch(context.Context, []models.BatchRequest, models.Host, uuid.UUID) ([]models.BatchResponse, error)
-	ListByUserID(context.Context, uuid.UUID) ([]models.ShortenURL, error)
+	ListByUserID(context.Context, models.Host, uuid.UUID) ([]models.ShortenURL, error)
 }
 
 type Service struct {
@@ -54,8 +54,8 @@ func (s *Service) InsertBatch(ctx context.Context, batch []models.BatchRequest, 
 	return result, nil
 }
 
-func (s *Service) ListByUserID(ctx context.Context, userID uuid.UUID) ([]models.ShortenURL, error) {
-	result, err := s.storage.ListByUserID(ctx, userID)
+func (s *Service) ListByUserID(ctx context.Context, host models.Host, userID uuid.UUID) ([]models.ShortenURL, error) {
+	result, err := s.storage.ListByUserID(ctx, host, userID)
 	if err != nil {
 		return result, err
 	}

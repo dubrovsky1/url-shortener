@@ -15,7 +15,7 @@ func ListByUserID(s *service.Service) http.HandlerFunc {
 		userID := ctx.Value(models.KeyUserID("UserID")).(uuid.UUID)
 		logger.Sugar.Infow("Request Log.", "UserId", userID)
 
-		result, err := s.ListByUserID(ctx, userID)
+		result, err := s.ListByUserID(ctx, models.Host(req.Host), userID)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return

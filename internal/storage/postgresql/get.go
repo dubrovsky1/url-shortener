@@ -5,6 +5,7 @@ import (
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
 	"github.com/google/uuid"
+	"net/url"
 )
 
 func (s *Storage) GetURL(ctx context.Context, shortURL models.ShortURL) (models.OriginalURL, error) {
@@ -44,7 +45,7 @@ func (s *Storage) GetShortURL(ctx context.Context, originalURL models.OriginalUR
 	return shortURL, nil
 }
 
-func (s *Storage) ListByUserID(ctx context.Context, u uuid.UUID) ([]models.ShortenURL, error) {
+func (s *Storage) ListByUserID(ctx context.Context, host models.Host, u uuid.UUID) ([]models.ShortenURL, error) {
 	var result []models.ShortenURL
 
 	rows, err := s.DB.QueryContext(ctx, `
@@ -68,6 +69,16 @@ func (s *Storage) ListByUserID(ctx context.Context, u uuid.UUID) ([]models.Short
 			logger.Sugar.Infow("Postgresql GetByUserId. Scan error.")
 			return nil, err
 		}
+
+		//составляем результирующий сокращённый URL и добавляем в слайс
+		resultShortURL := "http://" + string(host) + "/" + string(cur.ShortURL)
+
+		if _, e := url.Parse(resultShortURL); e != nil {
+			logger.Sugar.Infow("Postgresql InsertBatch. Not result URL.")
+			return nil, e
+		}
+
+		cur.ShortURL = models.ShortURL(resultShortURL)
 		result = append(result, cur)
 	}
 
