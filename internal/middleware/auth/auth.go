@@ -32,31 +32,30 @@ func Auth(h http.HandlerFunc) http.HandlerFunc {
 		cookie, err := req.Cookie("userid")
 
 		if err == http.ErrNoCookie {
-			tokenString, errToken = BuildJWTString()
-			if errToken != nil {
-				http.Error(res, errToken.Error(), http.StatusUnauthorized)
+			if req.Method != http.MethodGet {
+				tokenString, errToken = BuildJWTString()
+				if errToken != nil {
+					http.Error(res, errToken.Error(), http.StatusUnauthorized)
+					return
+				}
+
+				c := &http.Cookie{
+					Name:  "userid",
+					Value: tokenString,
+				}
+
+				http.SetCookie(res, c)
+			} else {
+				http.Error(res, err.Error(), http.StatusUnauthorized)
 				return
 			}
-
-			c := &http.Cookie{
-				Name:  "userid",
-				Value: tokenString,
+		} else {
+			if err = cookie.Valid(); err != nil {
+				http.Error(res, err.Error(), http.StatusUnauthorized)
+				return
 			}
-
-			http.SetCookie(res, c)
-
-			//logger.Sugar.Infow("Auth Log.", "token", tokenString, "userID", userID)
-
-			http.Error(res, err.Error(), http.StatusUnauthorized)
-			return
+			tokenString = cookie.Value
 		}
-
-		if err = cookie.Valid(); err != nil {
-			http.Error(res, err.Error(), http.StatusUnauthorized)
-			return
-		}
-
-		tokenString = cookie.Value
 
 		userID, errGetUserID = GetUserID(tokenString)
 		if errGetUserID != nil {
