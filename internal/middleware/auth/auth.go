@@ -44,9 +44,19 @@ func Auth(h http.HandlerFunc) http.HandlerFunc {
 			}
 
 			http.SetCookie(res, c)
-		} else {
-			tokenString = cookie.Value
+
+			//logger.Sugar.Infow("Auth Log.", "token", tokenString, "userID", userID)
+
+			http.Error(res, err.Error(), http.StatusUnauthorized)
+			return
 		}
+
+		if err = cookie.Valid(); err != nil {
+			http.Error(res, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		tokenString = cookie.Value
 
 		userID, errGetUserID = GetUserID(tokenString)
 		if errGetUserID != nil {
