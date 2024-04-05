@@ -21,7 +21,7 @@ func GetURL(s *service.Service) http.HandlerFunc {
 			return
 		}
 
-		if result.IsDel == true {
+		if result.IsDel {
 			http.Error(res, "deleted", http.StatusGone)
 			return
 		}

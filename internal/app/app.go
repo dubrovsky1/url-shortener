@@ -63,7 +63,7 @@ func (a *App) Run() {
 
 	go func() {
 		if err := serv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatal("Listen and serve returned err: %v", err)
+			log.Fatalf("Listen and serve returned err: %v", err)
 		}
 	}()
 	logger.Sugar.Infow("Server is listening", "host", a.Flags.Host)

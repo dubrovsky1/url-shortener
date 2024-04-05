@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	errs "github.com/dubrovsky1/url-shortener/internal/errors"
+	"github.com/dubrovsky1/url-shortener/internal/generator"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
 	"github.com/google/uuid"
@@ -188,6 +189,9 @@ func (s *Storage) InsertBatch(ctx context.Context, batch []models.BatchRequest, 
 		curItem.ShortURL, err = s.GetShortURL(ctx, curItem.OriginalURL)
 
 		if err == nil {
+			//гененрируем короткую ссылку
+			curItem.ShortURL = models.ShortURL(generator.GetShortURL())
+
 			curItem.ShortURL, err = s.SaveURL(ctx, curItem)
 			if err != nil {
 				logger.Sugar.Infow("File InsertBatch. Insert error.")
@@ -251,17 +255,18 @@ func (s *Storage) DeleteURL(ctx context.Context, deletedItems []models.DeletedUR
 	//поле для записи в файл
 	writer := bufio.NewWriter(file)
 
-	for _, row := range s.Urls {
+	for i, row := range s.Urls {
 		for _, item := range deletedItems {
 			if row.UserID == item.UserID && row.ShortURL == item.ShortURL {
 				row.IsDel = true
+				s.Urls[i].IsDel = true
 			}
 		}
 
-		data, errJson := json.Marshal(row)
-		if errJson != nil {
+		data, errJSON := json.Marshal(row)
+		if errJSON != nil {
 			logger.Sugar.Infow("Marshal su error.")
-			return errJson
+			return errJSON
 		}
 
 		// записываем событие в буфер

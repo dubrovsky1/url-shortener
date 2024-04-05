@@ -90,7 +90,7 @@ func TestDeleteURL(t *testing.T) {
 			userID, errGetUserID := auth.GetUserID(tokenString)
 			require.NoError(t, errGetUserID)
 
-			for i, _ := range tt.Ms.DeletedURLS {
+			for i := range tt.Ms.DeletedURLS {
 				tt.Ms.DeletedURLS[i].UserID = userID
 			}
 
@@ -98,6 +98,8 @@ func TestDeleteURL(t *testing.T) {
 
 			resp, errResp := client.Do(req)
 			require.NoError(t, errResp)
+
+			defer resp.Body.Close()
 
 			serv.Close()
 
