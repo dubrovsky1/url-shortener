@@ -18,6 +18,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestListByUserID(t *testing.T) {
@@ -113,7 +114,7 @@ func TestListByUserID(t *testing.T) {
 			defer tt.Ms.Ctrl.Finish()
 
 			storage := mocks.NewMockStorager(tt.Ms.Ctrl)
-			serv := service.New(storage)
+			serv := service.New(storage, 10, 10*time.Second)
 
 			storage.EXPECT().ListByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.Ms.List, tt.Ms.Error).AnyTimes()
 

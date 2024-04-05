@@ -42,6 +42,7 @@ func Auth(h http.HandlerFunc) http.HandlerFunc {
 				c := &http.Cookie{
 					Name:  "userid",
 					Value: tokenString,
+					Path:  "/",
 				}
 
 				http.SetCookie(res, c)

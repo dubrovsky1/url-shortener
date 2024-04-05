@@ -15,10 +15,11 @@ import (
 //go:generate mockgen -source=storage.go -destination=../storage/mocks/storage.go -package=mocks
 type Storager interface {
 	SaveURL(context.Context, models.ShortenURL) (models.ShortURL, error)
-	GetURL(context.Context, models.ShortURL) (models.OriginalURL, error)
+	GetURL(context.Context, models.ShortURL) (models.ShortenURL, error)
 	GetShortURL(context.Context, models.OriginalURL) (models.ShortURL, error)
 	InsertBatch(context.Context, []models.BatchRequest, models.Host, uuid.UUID) ([]models.BatchResponse, error)
 	ListByUserID(context.Context, models.Host, uuid.UUID) ([]models.ShortenURL, error)
+	DeleteURL(context.Context, []models.DeletedURLS) error
 	io.Closer
 }
 

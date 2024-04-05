@@ -8,22 +8,23 @@ import (
 	"net/url"
 )
 
-func (s *Storage) GetURL(ctx context.Context, shortURL models.ShortURL) (models.OriginalURL, error) {
-	var originalURL models.OriginalURL
+func (s *Storage) GetURL(ctx context.Context, shortURL models.ShortURL) (models.ShortenURL, error) {
+	var shortenURL models.ShortenURL
 
 	row := s.DB.QueryRowContext(ctx, `
-												select s.original_url 
+												select s.original_url,
+												       s.is_deleted
 												from shorten_urls s 
 												where s.shorten_url = $1;
 		`, shortURL,
 	)
 
-	err := row.Scan(&originalURL)
+	err := row.Scan(&shortenURL.OriginalURL, &shortenURL.IsDel)
 	if err != nil {
-		logger.Sugar.Infow("Postgresql GetURL. Scan error.")
-		return "", err
+		logger.Sugar.Infow("Postgresql GetURL. Scan error.", "error", err.Error())
+		return models.ShortenURL{}, err
 	}
-	return originalURL, nil
+	return shortenURL, nil
 }
 
 func (s *Storage) GetShortURL(ctx context.Context, originalURL models.OriginalURL) (models.ShortURL, error) {

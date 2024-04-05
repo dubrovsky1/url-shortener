@@ -27,6 +27,8 @@ type MockStorage struct {
 	ShortURL    ShortURL
 	BatchResp   []BatchResponse
 	List        []ShortenURL
+	ShortenURL  ShortenURL
+	DeletedURLS []DeletedURLS
 	Error       error
 }
 

@@ -38,7 +38,8 @@ func New(connectString string) (*Storage, error) {
                             id              serial primary key,
                             original_url    text   not null,
                             shorten_url     text   not null unique,
-                            created_user_id uuid   null
+                            created_user_id uuid   null,
+                            is_deleted      bool   not null default false
                         );
                         
                         comment on table shorten_urls is 'Таблица для сокращенных ссылок';
@@ -47,6 +48,7 @@ func New(connectString string) (*Storage, error) {
                         comment on column shorten_urls.original_url is 'Оригинальный URL';
                         comment on column shorten_urls.shorten_url is 'Сокращенный URL';
                         comment on column shorten_urls.created_user_id is 'Id создавшего пользователя';
+                        comment on column shorten_urls.is_deleted is 'Признак удаления';
                                 
                         create unique index if not exists uix_original_url on shorten_urls (original_url);
 					`

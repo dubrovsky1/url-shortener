@@ -50,6 +50,20 @@ func (mr *MockStoragerMockRecorder) Close() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockStorager)(nil).Close))
 }
 
+// DeleteURL mocks base method.
+func (m *MockStorager) DeleteURL(arg0 context.Context, arg1 []models.DeletedURLS) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteURL", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteURL indicates an expected call of DeleteURL.
+func (mr *MockStoragerMockRecorder) DeleteURL(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteURL", reflect.TypeOf((*MockStorager)(nil).DeleteURL), arg0, arg1)
+}
+
 // GetShortURL mocks base method.
 func (m *MockStorager) GetShortURL(arg0 context.Context, arg1 models.OriginalURL) (models.ShortURL, error) {
 	m.ctrl.T.Helper()
@@ -66,10 +80,10 @@ func (mr *MockStoragerMockRecorder) GetShortURL(arg0, arg1 interface{}) *gomock.
 }
 
 // GetURL mocks base method.
-func (m *MockStorager) GetURL(arg0 context.Context, arg1 models.ShortURL) (models.OriginalURL, error) {
+func (m *MockStorager) GetURL(arg0 context.Context, arg1 models.ShortURL) (models.ShortenURL, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetURL", arg0, arg1)
-	ret0, _ := ret[0].(models.OriginalURL)
+	ret0, _ := ret[0].(models.ShortenURL)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

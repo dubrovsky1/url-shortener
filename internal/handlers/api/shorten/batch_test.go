@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestBatch(t *testing.T) {
@@ -154,7 +155,7 @@ func TestBatch(t *testing.T) {
 			defer tt.Ms.Ctrl.Finish()
 
 			storage := mocks.NewMockStorager(tt.Ms.Ctrl)
-			serv := service.New(storage)
+			serv := service.New(storage, 10, 10*time.Second)
 
 			storage.EXPECT().InsertBatch(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.Ms.BatchResp, tt.Ms.Error).AnyTimes()
 

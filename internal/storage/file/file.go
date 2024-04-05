@@ -19,6 +19,7 @@ type ShortenURL struct {
 	ShortURL    models.ShortURL    `json:"short_url"`
 	OriginalURL models.OriginalURL `json:"original_url"`
 	UserID      uuid.UUID          `json:"user_id"`
+	IsDel       bool               `json:"is_deleted"`
 }
 
 type Storage struct {
@@ -86,6 +87,41 @@ func New(filename string) (*Storage, error) {
 	return &s, nil
 }
 
+func (s *Storage) WriteFile(item *ShortenURL) error {
+	data, err := json.Marshal(item)
+	if err != nil {
+		logger.Sugar.Infow("Marshal su error.")
+		return err
+	}
+
+	//открываем файл, чтобы начать с ним работать
+	file, err := os.OpenFile(s.Filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		logger.Sugar.Infow("Open file error.")
+		return err
+	}
+	defer file.Close()
+
+	//поле для записи в файл
+	writer := bufio.NewWriter(file)
+
+	// записываем событие в буфер
+	if _, err = writer.Write(data); err != nil {
+		logger.Sugar.Infow("Write file error.")
+		return err
+	}
+
+	// добавляем перенос строки
+	if err = writer.WriteByte('\n'); err != nil {
+		logger.Sugar.Infow("Write \\n error.")
+		return err
+	}
+
+	// записываем буфер в файл
+	writer.Flush()
+	return nil
+}
+
 func (s *Storage) SaveURL(ctx context.Context, item models.ShortenURL) (models.ShortURL, error) {
 	//поиск уже сохраненной оригинальной ссылки
 	shortURL, err := s.GetShortURL(ctx, item.OriginalURL)
@@ -99,54 +135,32 @@ func (s *Storage) SaveURL(ctx context.Context, item models.ShortenURL) (models.S
 		ShortURL:    item.ShortURL,
 		OriginalURL: item.OriginalURL,
 		UserID:      item.UserID,
+		IsDel:       false,
 	}
 
 	s.Urls = append(s.Urls, su)
 	s.maxUUID++
 
-	data, err := json.Marshal(&su)
+	err = s.WriteFile(&su)
 	if err != nil {
-		logger.Sugar.Infow("Marshal su error.")
-		return "", err
+		return item.ShortURL, err
 	}
-
-	//открываем файл, чтобы начать с ним работать
-	file, err := os.OpenFile(s.Filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		logger.Sugar.Infow("Open file error.")
-		return "", err
-	}
-	defer file.Close()
-
-	//поле для записи в файл
-	writer := bufio.NewWriter(file)
-
-	// записываем событие в буфер
-	if _, err = writer.Write(data); err != nil {
-		logger.Sugar.Infow("Write file error.")
-		return "", err
-	}
-
-	// добавляем перенос строки
-	if err = writer.WriteByte('\n'); err != nil {
-		logger.Sugar.Infow("Write \\n error.")
-		return "", err
-	}
-
-	// записываем буфер в файл
-	writer.Flush()
 
 	return item.ShortURL, nil
 }
 
-func (s *Storage) GetURL(ctx context.Context, shortURL models.ShortURL) (models.OriginalURL, error) {
+func (s *Storage) GetURL(ctx context.Context, shortURL models.ShortURL) (models.ShortenURL, error) {
 	//делаю поиск по массиву из Storage, тк чтение из файла происходит при инициализации хранилища
 	for _, r := range s.Urls {
 		if r.ShortURL == shortURL {
-			return r.OriginalURL, nil
+			result := models.ShortenURL{
+				OriginalURL: r.OriginalURL,
+				IsDel:       r.IsDel,
+			}
+			return result, nil
 		}
 	}
-	return "", errors.New("the short url is missing")
+	return models.ShortenURL{}, errors.New("the short url is missing")
 }
 
 func (s *Storage) GetShortURL(ctx context.Context, originalURL models.OriginalURL) (models.ShortURL, error) {
@@ -167,6 +181,7 @@ func (s *Storage) InsertBatch(ctx context.Context, batch []models.BatchRequest, 
 		var curItem = models.ShortenURL{
 			OriginalURL: models.OriginalURL(row.URL),
 			UserID:      userID,
+			IsDel:       false,
 		}
 
 		//поиск уже сохраненной оригинальной ссылки
@@ -216,9 +231,55 @@ func (s *Storage) ListByUserID(ctx context.Context, host models.Host, userID uui
 			var curItem = models.ShortenURL{
 				OriginalURL: row.OriginalURL,
 				ShortURL:    models.ShortURL(resultShortURL),
+				IsDel:       row.IsDel,
 			}
 			result = append(result, curItem)
 		}
 	}
 	return result, nil
+}
+
+func (s *Storage) DeleteURL(ctx context.Context, deletedItems []models.DeletedURLS) error {
+	//открываем файл с полным очищением - O_TRUNC, чтобы перезаписать стоки из Urls с учетом обновленного признака IsDel
+	file, err := os.OpenFile(s.Filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0666)
+	if err != nil {
+		logger.Sugar.Infow("Open file error.")
+		return err
+	}
+	defer file.Close()
+
+	//поле для записи в файл
+	writer := bufio.NewWriter(file)
+
+	for _, row := range s.Urls {
+		for _, item := range deletedItems {
+			if row.UserID == item.UserID && row.ShortURL == item.ShortURL {
+				row.IsDel = true
+			}
+		}
+
+		data, errJson := json.Marshal(row)
+		if errJson != nil {
+			logger.Sugar.Infow("Marshal su error.")
+			return errJson
+		}
+
+		// записываем событие в буфер
+		if _, err = writer.Write(data); err != nil {
+			logger.Sugar.Infow("Write file error.")
+			return err
+		}
+
+		// добавляем перенос строки
+		if err = writer.WriteByte('\n'); err != nil {
+			logger.Sugar.Infow("Write \\n error.")
+			return err
+		}
+
+	}
+	// записываем буфер в файл
+	writer.Flush()
+
+	return nil
+
 }

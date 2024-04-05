@@ -15,6 +15,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestGetURL(t *testing.T) {
@@ -24,10 +25,10 @@ func TestGetURL(t *testing.T) {
 		{
 			Name: "Get url. Success.",
 			Ms: models.MockStorage{
-				Ctrl:        gomock.NewController(t),
-				OriginalURL: "https://practicum.yandex.ru/",
-				ShortURL:    "4fafrx",
-				Error:       nil,
+				Ctrl:       gomock.NewController(t),
+				ShortURL:   "4fafrx",
+				ShortenURL: models.ShortenURL{OriginalURL: "https://practicum.yandex.ru/", IsDel: false},
+				Error:      nil,
 			},
 			Rp: models.RequestParams{
 				Method: http.MethodGet,
@@ -42,10 +43,10 @@ func TestGetURL(t *testing.T) {
 		{
 			Name: "Get. Not exists short url.",
 			Ms: models.MockStorage{
-				Ctrl:        gomock.NewController(t),
-				OriginalURL: "",
-				ShortURL:    "abcdef",
-				Error:       errors.New("the short url is missing"),
+				Ctrl:       gomock.NewController(t),
+				ShortURL:   "abcdef",
+				ShortenURL: models.ShortenURL{},
+				Error:      errors.New("the short url is missing"),
 			},
 			Rp: models.RequestParams{
 				Method: http.MethodGet,
@@ -53,6 +54,22 @@ func TestGetURL(t *testing.T) {
 			},
 			Want: models.Want{
 				ExpectedCode: http.StatusBadRequest,
+			},
+		},
+		{
+			Name: "Get. Deleted url.",
+			Ms: models.MockStorage{
+				Ctrl:       gomock.NewController(t),
+				ShortURL:   "4fafrx",
+				ShortenURL: models.ShortenURL{OriginalURL: "https://practicum.yandex.ru/", IsDel: true},
+				Error:      nil,
+			},
+			Rp: models.RequestParams{
+				Method: http.MethodGet,
+				Body:   "",
+			},
+			Want: models.Want{
+				ExpectedCode: http.StatusGone,
 			},
 		},
 	}
@@ -63,9 +80,9 @@ func TestGetURL(t *testing.T) {
 			defer tt.Ms.Ctrl.Finish()
 
 			storage := mocks.NewMockStorager(tt.Ms.Ctrl)
-			serv := service.New(storage)
+			serv := service.New(storage, 10, 10*time.Second)
 
-			storage.EXPECT().GetURL(gomock.Any(), tt.Ms.ShortURL).Return(tt.Ms.OriginalURL, tt.Ms.Error)
+			storage.EXPECT().GetURL(gomock.Any(), tt.Ms.ShortURL).Return(tt.Ms.ShortenURL, tt.Ms.Error)
 
 			//маршрутизация запроса
 			r := chi.NewRouter()
@@ -93,9 +110,9 @@ func TestGetURL(t *testing.T) {
 
 			assert.Equal(t, tt.Want.ExpectedCode, resp.StatusCode, "Код ответа не совпадает с ожидаемым")
 
-			if tt.Want.ExpectedCode != http.StatusBadRequest {
+			if tt.Want.ExpectedCode != http.StatusBadRequest && tt.Want.ExpectedCode != http.StatusGone {
 				assert.Equal(t, tt.Want.ExpectedContentType, resp.Header.Get("content-type"), "content-type не совпадает с ожидаемым")
-				assert.Equal(t, string(tt.Ms.OriginalURL), resp.Header.Get("Location"), "Location не совпадает с ожидаемым")
+				assert.Equal(t, string(tt.Ms.ShortenURL.OriginalURL), resp.Header.Get("Location"), "Location не совпадает с ожидаемым")
 			}
 
 			t.Log("=============================================================>")

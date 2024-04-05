@@ -37,11 +37,11 @@ func (s *Storage) SaveURL(ctx context.Context, item models.ShortenURL) (models.S
 	return item.ShortURL, nil
 }
 
-func (s *Storage) GetURL(ctx context.Context, shortURL models.ShortURL) (models.OriginalURL, error) {
+func (s *Storage) GetURL(ctx context.Context, shortURL models.ShortURL) (models.ShortenURL, error) {
 	if _, ok := s.urls[shortURL]; !ok {
-		return "", errors.New("the short url is missing")
+		return models.ShortenURL{}, errors.New("the short url is missing")
 	}
-	return s.urls[shortURL].OriginalURL, nil
+	return s.urls[shortURL], nil
 }
 
 func (s *Storage) GetShortURL(ctx context.Context, originalURL models.OriginalURL) (models.ShortURL, error) {
@@ -116,4 +116,20 @@ func (s *Storage) ListByUserID(ctx context.Context, host models.Host, userID uui
 		}
 	}
 	return result, nil
+}
+
+func (s *Storage) DeleteURL(ctx context.Context, deletedItems []models.DeletedURLS) error {
+	for _, item := range deletedItems {
+		if _, ok := s.urls[item.ShortURL]; ok {
+			deleted := models.ShortenURL{
+				ID:          s.urls[item.ShortURL].ID,
+				OriginalURL: s.urls[item.ShortURL].OriginalURL,
+				ShortURL:    s.urls[item.ShortURL].ShortURL,
+				UserID:      s.urls[item.ShortURL].UserID,
+				IsDel:       true,
+			}
+			s.urls[item.ShortURL] = deleted
+		}
+	}
+	return nil
 }
