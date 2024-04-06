@@ -1,16 +1,30 @@
 package storage
 
 import (
+	"context"
 	"github.com/dubrovsky1/url-shortener/internal/config"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
+	"github.com/dubrovsky1/url-shortener/internal/models"
 	"github.com/dubrovsky1/url-shortener/internal/storage/file"
 	"github.com/dubrovsky1/url-shortener/internal/storage/memory"
 	"github.com/dubrovsky1/url-shortener/internal/storage/postgresql"
-	"github.com/dubrovsky1/url-shortener/internal/storage/repository"
+	"github.com/google/uuid"
+	"io"
 )
 
-func GetStorage(flags config.Config) (repository.Repository, error) {
-	var db repository.Repository
+//go:generate mockgen -source=storage.go -destination=../storage/mocks/storage.go -package=mocks
+type Storager interface {
+	SaveURL(context.Context, models.ShortenURL) (models.ShortURL, error)
+	GetURL(context.Context, models.ShortURL) (models.ShortenURL, error)
+	GetShortURL(context.Context, models.OriginalURL) (models.ShortURL, error)
+	InsertBatch(context.Context, []models.BatchRequest, models.Host, uuid.UUID) ([]models.BatchResponse, error)
+	ListByUserID(context.Context, models.Host, uuid.UUID) ([]models.ShortenURL, error)
+	DeleteURL(context.Context, []models.DeletedURLS) error
+	io.Closer
+}
+
+func GetStorage(flags config.Config) (Storager, error) {
+	var db Storager
 	var err error
 
 	if flags.ConnectionString != "" {

@@ -2,11 +2,13 @@ package shorten
 
 import (
 	"bytes"
-	"github.com/dubrovsky1/url-shortener/internal/handlers/mocks"
+	errs "github.com/dubrovsky1/url-shortener/internal/errors"
+	"github.com/dubrovsky1/url-shortener/internal/middleware/auth"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/gzip"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
-	"github.com/dubrovsky1/url-shortener/internal/storage/repository"
+	"github.com/dubrovsky1/url-shortener/internal/service"
+	"github.com/dubrovsky1/url-shortener/internal/storage/mocks"
 	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -15,6 +17,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestShorten(t *testing.T) {
@@ -45,7 +48,7 @@ func TestShorten(t *testing.T) {
 				Ctrl:        gomock.NewController(t),
 				OriginalURL: "https://yandex.ru/",
 				ShortURL:    "2Yy05g",
-				Error:       repository.ErrUniqueIndex,
+				Error:       errs.ErrUniqueIndex,
 			},
 			Rp: models.RequestParams{
 				Method:   http.MethodPost,
@@ -111,11 +114,14 @@ func TestShorten(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			defer tt.Ms.Ctrl.Finish()
 
-			storage := mocks.NewMockURLSaver(tt.Ms.Ctrl)
-			storage.EXPECT().SaveURL(gomock.Any(), tt.Ms.OriginalURL).Return(tt.Ms.ShortURL, tt.Ms.Error).AnyTimes()
+			storage := mocks.NewMockStorager(tt.Ms.Ctrl)
+			serv := service.New(storage, 10, 10*time.Second)
+
+			storage.EXPECT().SaveURL(gomock.Any(), gomock.Any()).Return(tt.Ms.ShortURL, tt.Ms.Error).AnyTimes()
 
 			r := chi.NewRouter()
-			r.Post("/api/shorten", logger.WithLogging(gzip.GzipMiddleware(Shorten(storage, "http://localhost:8080/"))))
+			r.Post("/api/shorten", auth.Auth(logger.WithLogging(gzip.GzipMiddleware(Shorten(serv, "http://localhost:8080/")))))
+
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 

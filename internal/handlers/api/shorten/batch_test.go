@@ -1,11 +1,14 @@
-package batch
+package shorten
 
 import (
 	"bytes"
-	"github.com/dubrovsky1/url-shortener/internal/handlers/mocks"
+	errs "github.com/dubrovsky1/url-shortener/internal/errors"
+	"github.com/dubrovsky1/url-shortener/internal/middleware/auth"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/gzip"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
+	"github.com/dubrovsky1/url-shortener/internal/service"
+	"github.com/dubrovsky1/url-shortener/internal/storage/mocks"
 	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -13,6 +16,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestBatch(t *testing.T) {
@@ -23,6 +27,21 @@ func TestBatch(t *testing.T) {
 			Name: "Batch. Success.",
 			Ms: models.MockStorage{
 				Ctrl: gomock.NewController(t),
+				BatchResp: []models.BatchResponse{
+					{
+						CorrelationID: "a",
+						ShortURL:      "2Yy05g",
+					},
+					{
+						CorrelationID: "b",
+						ShortURL:      "Twysag",
+					},
+					{
+						CorrelationID: "c",
+						ShortURL:      "asdR5a",
+					},
+				},
+				Error: nil,
 			},
 			Rp: models.RequestParams{
 				Method: http.MethodPost,
@@ -49,7 +68,8 @@ func TestBatch(t *testing.T) {
 		{
 			Name: "Batch. No exists body.",
 			Ms: models.MockStorage{
-				Ctrl: gomock.NewController(t),
+				Ctrl:  gomock.NewController(t),
+				Error: nil,
 			},
 			Rp: models.RequestParams{
 				Method:   http.MethodPost,
@@ -60,9 +80,29 @@ func TestBatch(t *testing.T) {
 			},
 		},
 		{
+			Name: "Batch. Not unique original url.",
+			Ms: models.MockStorage{
+				Ctrl:  gomock.NewController(t),
+				Error: errs.ErrUniqueIndex,
+			},
+			Rp: models.RequestParams{
+				Method: http.MethodPost,
+				JSONBody: bytes.NewBufferString(`
+													[{
+													    "correlation_id": "a",
+													    "original_url": "https://123456.ru/"
+													}]
+												`),
+			},
+			Want: models.Want{
+				ExpectedCode: http.StatusBadRequest,
+			},
+		},
+		{
 			Name: "Batch. Not valid body original url.",
 			Ms: models.MockStorage{
-				Ctrl: gomock.NewController(t),
+				Ctrl:  gomock.NewController(t),
+				Error: nil,
 			},
 			Rp: models.RequestParams{
 				Method: http.MethodPost,
@@ -88,7 +128,8 @@ func TestBatch(t *testing.T) {
 		{
 			Name: "Batch. Bad json.",
 			Ms: models.MockStorage{
-				Ctrl: gomock.NewController(t),
+				Ctrl:  gomock.NewController(t),
+				Error: nil,
 			},
 			Rp: models.RequestParams{
 				Method: http.MethodPost,
@@ -112,11 +153,14 @@ func TestBatch(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
 			defer tt.Ms.Ctrl.Finish()
-			storage := mocks.NewMockBatchURLSaver(tt.Ms.Ctrl)
-			storage.EXPECT().InsertBatch(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+
+			storage := mocks.NewMockStorager(tt.Ms.Ctrl)
+			serv := service.New(storage, 10, 10*time.Second)
+
+			storage.EXPECT().InsertBatch(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.Ms.BatchResp, tt.Ms.Error).AnyTimes()
 
 			r := chi.NewRouter()
-			r.Post("/api/shorten/batch", logger.WithLogging(gzip.GzipMiddleware(Batch(storage))))
+			r.Post("/api/shorten/batch", auth.Auth(logger.WithLogging(gzip.GzipMiddleware(Batch(serv)))))
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 

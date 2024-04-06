@@ -1,25 +1,24 @@
-package batch
+package shorten
 
 import (
-	"context"
 	"encoding/json"
 	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
+	"github.com/dubrovsky1/url-shortener/internal/service"
+	"github.com/google/uuid"
 	"io"
 	"net/http"
 	"net/url"
 )
 
-//go:generate mockgen -source=batch.go -destination=../mocks/batch.go -package=mocks
-type BatchURLSaver interface {
-	InsertBatch(context.Context, []models.BatchRequest, string) ([]models.BatchResponse, error)
-}
-
-func Batch(db BatchURLSaver) http.HandlerFunc {
+func Batch(s *service.Service) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
-
+		userID := ctx.Value(models.KeyUserID("UserID")).(uuid.UUID)
 		body, err := io.ReadAll(req.Body)
+
+		logger.Sugar.Infow("Request batch Log.", "Body", string(body), "userID", userID)
+
 		if err != nil {
 			http.Error(res, "The request body is missing", http.StatusBadRequest)
 			return
@@ -44,7 +43,7 @@ func Batch(db BatchURLSaver) http.HandlerFunc {
 			}
 		}
 
-		result, err := db.InsertBatch(ctx, data, req.Host)
+		result, err := s.InsertBatch(ctx, data, models.Host(req.Host), userID)
 		if err != nil {
 			http.Error(res, "Insert error", http.StatusBadRequest)
 			return
