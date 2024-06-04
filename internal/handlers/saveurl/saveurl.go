@@ -25,6 +25,11 @@ func SaveURL(s *service.Service, resultShortURL string) http.HandlerFunc {
 			UserID:      userID,
 		}
 
+		var a []string
+		for i := 0; i < 1000000; i++ {
+			a = append(a, "Hello")
+		}
+
 		//проверяем корректность url из тела запроса
 		if err != nil || len(body) == 0 {
 			http.Error(res, "The request body is missing", http.StatusBadRequest)

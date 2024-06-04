@@ -134,3 +134,27 @@ func TestSaveURL(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkSaveURL(b *testing.B) {
+	logger.Initialize()
+	ctrl := gomock.NewController(b)
+	storage := mocks.NewMockStorager(ctrl)
+	//res := models.ShortenURL{OriginalURL: "https://practicum.yandex.ru/", IsDel: false}
+
+	storage.EXPECT().SaveURL(gomock.Any(), gomock.Any()).Return(models.ShortURL("jB9Wbk"), nil).AnyTimes()
+
+	serv := service.New(storage, 10, 10*time.Second)
+
+	//маршрутизация запроса
+	r := chi.NewRouter()
+	r.Post("/", auth.Auth(gzip.GzipMiddleware(SaveURL(serv, "http://localhost:8080/"))))
+
+	req, _ := http.NewRequest(http.MethodPost, "http://localhost:8080/", strings.NewReader("https://practicum.yandex.ru/"))
+	rec := httptest.NewRecorder()
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		r.ServeHTTP(rec, req)
+	}
+}

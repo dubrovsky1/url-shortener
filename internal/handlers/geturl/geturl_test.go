@@ -119,3 +119,27 @@ func TestGetURL(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkGetURL(b *testing.B) {
+	//logger.Initialize()
+	ctrl := gomock.NewController(b)
+	storage := mocks.NewMockStorager(ctrl)
+	res := models.ShortenURL{OriginalURL: "https://practicum.yandex.ru/", IsDel: false}
+
+	storage.EXPECT().GetURL(gomock.Any(), models.ShortURL("4fafrx")).Return(res, nil).AnyTimes()
+
+	serv := service.New(storage, 10, 10*time.Second)
+
+	//маршрутизация запроса
+	r := chi.NewRouter()
+	r.Get("/{id}", gzip.GzipMiddleware(GetURL(serv)))
+
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost:8080/4fafrx", strings.NewReader(""))
+	rec := httptest.NewRecorder()
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		r.ServeHTTP(rec, req)
+	}
+}
