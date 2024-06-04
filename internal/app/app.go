@@ -18,7 +18,6 @@ import (
 	"log"
 	"net/http"
 	"net/http/pprof"
-	_ "net/http/pprof"
 	"os/signal"
 	"syscall"
 	"time"

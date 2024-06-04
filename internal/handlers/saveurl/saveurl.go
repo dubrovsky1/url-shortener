@@ -3,7 +3,6 @@ package saveurl
 import (
 	"errors"
 	errs "github.com/dubrovsky1/url-shortener/internal/errors"
-	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
 	"github.com/dubrovsky1/url-shortener/internal/service"
 	"github.com/google/uuid"
@@ -18,7 +17,7 @@ func SaveURL(s *service.Service, resultShortURL string) http.HandlerFunc {
 		userID := ctx.Value(models.KeyUserID("UserID")).(uuid.UUID)
 		body, err := io.ReadAll(req.Body)
 
-		logger.Sugar.Infow("Request Log.", "Body", string(body), "userID", userID)
+		//logger.Sugar.Infow("Request Log.", "Body", string(body), "userID", userID)
 
 		item := models.ShortenURL{
 			OriginalURL: models.OriginalURL(body),
@@ -73,11 +72,11 @@ func SaveURL(s *service.Service, resultShortURL string) http.HandlerFunc {
 
 		io.WriteString(res, responseBody)
 
-		logger.Sugar.Infow(
-			"Response Log.",
-			"content-type", res.Header().Get("content-type"),
-			"shortURL", shortURL,
-			"Body", responseBody,
-		)
+		//logger.Sugar.Infow(
+		//	"Response Log.",
+		//	"content-type", res.Header().Get("content-type"),
+		//	"shortURL", shortURL,
+		//	"Body", responseBody,
+		//)
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	errs "github.com/dubrovsky1/url-shortener/internal/errors"
-	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
 	"github.com/dubrovsky1/url-shortener/internal/service"
 	"github.com/google/uuid"
@@ -19,7 +18,7 @@ func Shorten(s *service.Service, resultShortURL string) http.HandlerFunc {
 		userID := ctx.Value(models.KeyUserID("UserID")).(uuid.UUID)
 		body, err := io.ReadAll(req.Body)
 
-		logger.Sugar.Infow("Request shorten Log.", "Body", string(body), "userID", userID)
+		//logger.Sugar.Infow("Request shorten Log.", "Body", string(body), "userID", userID)
 
 		//проверяем корректность url из тела запроса
 		if err != nil {
@@ -84,11 +83,11 @@ func Shorten(s *service.Service, resultShortURL string) http.HandlerFunc {
 
 		res.Write(resp)
 
-		logger.Sugar.Infow(
-			"Response Log.",
-			"content-type", res.Header().Get("content-type"),
-			"shortURL", shortURL,
-			"URL from body json", responseURL,
-		)
+		//logger.Sugar.Infow(
+		//	"Response Log.",
+		//	"content-type", res.Header().Get("content-type"),
+		//	"shortURL", shortURL,
+		//	"URL from body json", responseURL,
+		//)
 	}
 }
