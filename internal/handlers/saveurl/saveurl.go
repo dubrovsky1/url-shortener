@@ -25,10 +25,11 @@ func SaveURL(s *service.Service, resultShortURL string) http.HandlerFunc {
 			UserID:      userID,
 		}
 
-		var a []string
-		for i := 0; i < 1000000; i++ {
-			a = append(a, "Hello")
-		}
+		//имитация большого выделения памяти
+		//var a []string
+		//for i := 0; i < 1000000; i++ {
+		//	a = append(a, "Hello")
+		//}
 
 		//проверяем корректность url из тела запроса
 		if err != nil || len(body) == 0 {
