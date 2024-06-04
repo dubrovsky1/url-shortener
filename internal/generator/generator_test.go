@@ -1,6 +1,8 @@
 package generator
 
-import "testing"
+import (
+	"testing"
+)
 
 func BenchmarkGetShortURL(b *testing.B) {
 	var arr []string
@@ -8,4 +10,5 @@ func BenchmarkGetShortURL(b *testing.B) {
 		s := GetShortURL()
 		arr = append(arr, s)
 	}
+	b.Log(arr)
 }
