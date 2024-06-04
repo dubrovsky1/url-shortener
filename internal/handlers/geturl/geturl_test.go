@@ -121,7 +121,6 @@ func TestGetURL(t *testing.T) {
 }
 
 func BenchmarkGetURL(b *testing.B) {
-	//logger.Initialize()
 	ctrl := gomock.NewController(b)
 	storage := mocks.NewMockStorager(ctrl)
 	res := models.ShortenURL{OriginalURL: "https://practicum.yandex.ru/", IsDel: false}
