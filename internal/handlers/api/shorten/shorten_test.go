@@ -149,5 +149,28 @@ func TestShorten(t *testing.T) {
 			t.Log("=============================================================>")
 		})
 	}
+}
 
+func BenchmarkShorten(b *testing.B) {
+	ctrl := gomock.NewController(b)
+	storage := mocks.NewMockStorager(ctrl)
+
+	storage.EXPECT().SaveURL(gomock.Any(), gomock.Any()).Return(models.ShortURL("2Yy05g"), nil).AnyTimes()
+
+	serv := service.New(storage, 10, 10*time.Second)
+
+	//маршрутизация запроса
+	r := chi.NewRouter()
+	r.Post("/api/shorten", auth.Auth(gzip.GzipMiddleware(Shorten(serv, "http://localhost:8080/"))))
+
+	JSONBody := bytes.NewBufferString(`{"url": "https://practicum.yandex.ru/"}`)
+
+	req, _ := http.NewRequest(http.MethodPost, "http://localhost:8080/api/shorten/batch", JSONBody)
+	rec := httptest.NewRecorder()
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		r.ServeHTTP(rec, req)
+	}
 }

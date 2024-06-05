@@ -17,7 +17,7 @@ func Batch(s *service.Service) http.HandlerFunc {
 		userID := ctx.Value(models.KeyUserID("UserID")).(uuid.UUID)
 		body, err := io.ReadAll(req.Body)
 
-		logger.Sugar.Infow("Request batch Log.", "Body", string(body), "userID", userID)
+		//logger.Sugar.Infow("Request batch Log.", "Body", string(body), "userID", userID)
 
 		if err != nil {
 			http.Error(res, "The request body is missing", http.StatusBadRequest)
@@ -60,10 +60,10 @@ func Batch(s *service.Service) http.HandlerFunc {
 		res.WriteHeader(http.StatusCreated)
 		res.Write(resp)
 
-		for _, row := range result {
-			logger.Sugar.Infow("Response result urls.",
-				"correlation_id", row.CorrelationID,
-				"original_url", row.ShortURL)
-		}
+		//for _, row := range result {
+		//	logger.Sugar.Infow("Response result urls.",
+		//		"correlation_id", row.CorrelationID,
+		//		"original_url", row.ShortURL)
+		//}
 	}
 }

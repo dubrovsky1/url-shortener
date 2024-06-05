@@ -1,7 +1,6 @@
 package geturl
 
 import (
-	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"github.com/dubrovsky1/url-shortener/internal/models"
 	"github.com/dubrovsky1/url-shortener/internal/service"
 	"github.com/go-chi/chi/v5"
@@ -13,7 +12,7 @@ func GetURL(s *service.Service) http.HandlerFunc {
 		ctx := req.Context()
 
 		shortURL := models.ShortURL(chi.URLParam(req, "id"))
-		logger.Sugar.Infow("Request Log.", "shortURL", shortURL)
+		//logger.Sugar.Infow("Request Log.", "shortURL", shortURL, "URL", req.URL)
 
 		result, err := s.GetURL(ctx, shortURL)
 		if err != nil {
@@ -30,10 +29,10 @@ func GetURL(s *service.Service) http.HandlerFunc {
 		res.Header().Set("Location", string(result.OriginalURL))
 		res.WriteHeader(http.StatusTemporaryRedirect)
 
-		logger.Sugar.Infow(
-			"Response Log.",
-			"content-type", res.Header().Get("content-type"),
-			"Location", res.Header().Get("Location"),
-		)
+		//logger.Sugar.Infow(
+		//	"Response Log.",
+		//	"content-type", res.Header().Get("content-type"),
+		//	"Location", res.Header().Get("Location"),
+		//)
 	}
 }

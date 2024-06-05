@@ -17,6 +17,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"log"
 	"net/http"
+	"net/http/pprof"
 	"os/signal"
 	"syscall"
 	"time"
@@ -71,6 +72,8 @@ func (a *App) Run() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	go a.RunPprof(ctx)
+
 	//запуск удаления записей
 	a.Service.Run(ctx)
 
@@ -91,4 +94,36 @@ func (a *App) Close() {
 
 	a.Service.Close()
 	logger.Sugar.Infow("Service closed")
+}
+
+func (a *App) RunPprof(ctx context.Context) {
+	r := chi.NewRouter()
+
+	r.HandleFunc("/debug/pprof/", pprof.Index)
+	r.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	r.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	r.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	r.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	//r.HandleFunc("/debug/pprof/{cmd}", pprof.Index)
+
+	r.Handle("/debug/pprof/block", pprof.Handler("block"))
+	r.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))
+	r.Handle("/debug/pprof/heap", pprof.Handler("heap"))
+	r.Handle("/debug/pprof/threadcreate", pprof.Handler("threadcreate"))
+
+	pprofServ := http.Server{
+		Addr:    "localhost:9090",
+		Handler: r,
+	}
+
+	go func() {
+		_ = pprofServ.ListenAndServe()
+	}()
+	logger.Sugar.Infow("Server pprof is listening", "host", "localhost:9090")
+
+	<-ctx.Done()
+	pprofServ.SetKeepAlivesEnabled(false)
+	_ = pprofServ.Shutdown(ctx)
+
+	logger.Sugar.Infow("Shutting down pprof server gracefully")
 }

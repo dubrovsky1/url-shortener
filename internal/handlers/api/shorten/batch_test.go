@@ -185,3 +185,55 @@ func TestBatch(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkBatch(b *testing.B) {
+	ctrl := gomock.NewController(b)
+	storage := mocks.NewMockStorager(ctrl)
+
+	batchResp := []models.BatchResponse{
+		{
+			CorrelationID: "a",
+			ShortURL:      "2Yy05g",
+		},
+		{
+			CorrelationID: "b",
+			ShortURL:      "Twysag",
+		},
+		{
+			CorrelationID: "c",
+			ShortURL:      "asdR5a",
+		},
+	}
+
+	storage.EXPECT().InsertBatch(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(batchResp, nil).AnyTimes()
+
+	serv := service.New(storage, 10, 10*time.Second)
+
+	//маршрутизация запроса
+	r := chi.NewRouter()
+	r.Post("/api/shorten/batch", auth.Auth(gzip.GzipMiddleware(Batch(serv))))
+
+	JSONBody := bytes.NewBufferString(`
+													[{
+													    "correlation_id": "a",
+													    "original_url": "https://123456.ru/"
+													},
+													{
+													    "correlation_id": "b",
+													    "original_url": "https://practicum.yandex.ru"
+													},
+													{
+													    "correlation_id": "c",
+													    "original_url": "https://fgfgfgfgfgfggf.ru/"
+													}]
+												`)
+
+	req, _ := http.NewRequest(http.MethodPost, "http://localhost:8080/api/shorten/batch", JSONBody)
+	rec := httptest.NewRecorder()
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		r.ServeHTTP(rec, req)
+	}
+}
