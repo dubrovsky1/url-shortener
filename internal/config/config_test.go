@@ -1,15 +1,14 @@
 package config
 
 import (
+	"github.com/dubrovsky1/url-shortener/internal/middleware/logger"
 	"testing"
 )
 
-func BenchmarkParseFlags(b *testing.B) {
-	//var flags []Config
-	//flags := ParseFlags()
-	for i := 0; i < b.N; i++ {
-		//	flag := ParseFlags()
-		//	flags = append(flags, flag)
-	}
-	//b.Log(flags)
+func TestParseFlags(t *testing.T) {
+	logger.Initialize()
+	go func() {
+		a := ParseFlags()
+		t.Log(a)
+	}()
 }
